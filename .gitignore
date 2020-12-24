@@ -130,3 +130,5 @@ dmypy.json
 # Customized
 
 .vscode
+local_files
+server_files
