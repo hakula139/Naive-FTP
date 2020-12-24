@@ -18,11 +18,10 @@ class ftp_client():
         self.buffer_size = 1024
         self.conn = None
 
-    def connect(self):
+    def open(self):
         if self.conn:
             op = input(
-                'Already connected. Close and establish a new connection? (y/N): ',
-            )
+                'Already connected. Close and establish a new connection? (y/N): ')
             if op.lower() != 'y':
                 return
             self.conn.close()
@@ -37,24 +36,24 @@ class ftp_client():
         else:
             print('Connected to server.')
 
-    def get(self, path):
-        pass
+    def close(self):
+        print('Bye!')
+        sys.exit()
 
-    def post(self, path):
-        pass
+    def retrieve(self, path):
+        if not self.conn:
+            print('Please connect to server first.')
 
-    def put(self, path):
-        pass
+        self.conn.sendall(f'RETR {path}'.encode('utf-8'))
 
-    def patch(self, path):
+        local_path = os.path.join(os.getcwd(), path)
+        dst_file = open(path, 'wb')
+
+    def store(self, path):
         pass
 
     def delete(self, path):
         pass
-
-    def close(self):
-        print('Bye!')
-        sys.exit()
 
     def router(self, raw_cmd):
         try:
@@ -62,16 +61,14 @@ class ftp_client():
             op = cmd[0]
             path = cmd[1] if len(cmd) == 2 else None
             method_dict = {
-                'CON': self.connect,
-                'GET': self.get,
-                'POS': self.post,
-                'PUT': self.put,
-                'PAT': self.patch,
-                'DEL': self.delete,
-                'QUI': self.close,
-                'EXI': self.close,
+                'OPEN': self.open,
+                'QUIT': self.close,
+                'EXIT': self.close,
+                'RETR': self.retrieve,
+                'STOR': self.store,
+                'DELE': self.delete,
             }
-            method = method_dict.get(op[:3].upper())
+            method = method_dict.get(op[:4].upper())
             method(path) if path else method()
         except Exception as e:
             print(f'Invalid operation: {raw_cmd}')
@@ -82,12 +79,8 @@ class ftp_client():
             self.router(raw_cmd)
 
 
-def main():
-    ftp_client().run()
-
-
 if __name__ == '__main__':
     try:
-        main()
+        ftp_client().run()
     except KeyboardInterrupt:
         print('\nInterrupted.')
