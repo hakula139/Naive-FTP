@@ -16,7 +16,7 @@ class ftp_server():
         # Properties
         self.buffer_size = 1024
         self.ctrl_timeout_duration = 60.0
-        self.data_timeout_duration = 1.0
+        self.data_timeout_duration = 3.0
 
         # Control connection
         self.ctrl_sock = None
@@ -152,8 +152,7 @@ class ftp_server():
                         break
                     self.data_conn.sendall(data)
         except OSError as e:
-            log('warn', 'retrieve',
-                f'Cannot open file: {src_path}, error: {e}')
+            log('warn', 'retrieve', f'OS error: {e}')
             self.send_status(550)
         except socket.timeout:
             log('warn', 'retrieve',
@@ -161,8 +160,6 @@ class ftp_server():
             self.send_status(426)
         except socket.error:
             pass
-        else:
-            self.send_status(226)
         finally:
             self.close_data_sock()
 
@@ -206,15 +203,10 @@ class ftp_server():
                             break
                         log('debug', 'run', f'Operation: {raw_cmd}')
                         self.router(raw_cmd)
-                except socket.timeout:
-                    log('info', 'run',
-                        f'Connection timeout: {self.client_addr}')
-                except socket.error:
+                except (socket.timeout, socket.error) as e:
                     pass
                 finally:
                     self.close_ctrl_conn()
-        except socket.error:
-            pass
         except KeyboardInterrupt:
             print('\nInterrupted.')
         except Exception as e:

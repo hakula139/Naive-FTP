@@ -17,8 +17,8 @@ class ftp_client():
     def __init__(self):
         # Properties
         self.buffer_size = 1024
-        self.ctrl_timeout_duration = 1.0
-        self.data_timeout_duration = 1.0
+        self.ctrl_timeout_duration = 3.0
+        self.data_timeout_duration = 3.0
 
         # Control connection
         self.ctrl_conn = None
@@ -47,7 +47,8 @@ class ftp_client():
                 return None
             return resp
         except (socket.timeout, socket.error) as e:
-            log('info', 'check_resp', f'Connection closed: {e}')
+            log('info', 'check_resp', f'Remote connection closed: {e}')
+            self.close_ctrl_conn()
             return None
         except Exception as e:
             log('error', 'check_resp', f'Unexpected exception: {e}')
@@ -63,7 +64,7 @@ class ftp_client():
             self.close_data_conn()
             return
         addr = re.search(
-            r'(?P<h1>\d+),(?P<h2>\d+),(?P<h3>\d+),(?P<h4>\d+),(?P<p1>\d+),(?P<p2>\d+)',
+            r'(\d+),(\d+),(\d+),(\d+),(\d+),(\d+)',
             resp,
         )
         if not addr:  # invalid response
@@ -71,17 +72,17 @@ class ftp_client():
             self.close_data_conn()
             return
         self.data_addr = (
-            '.'.join(addr.group(0, 4)),
-            int(addr.group(4)) << 8 & int(addr.group(5)),
+            '.'.join(addr.group(1, 2, 3, 4)),
+            (int(addr.group(5)) << 8) + int(addr.group(6)),
         )
-
         err = self.data_conn.connect_ex(self.data_addr)
         if err:
             log('warn', 'open_data_conn',
                 f'Data connection failed. error: {err}')
             self.close_data_conn()
         else:
-            log('info', 'open_data_conn', 'Connected to data server.')
+            log('info', 'open_data_conn',
+                f'Data connection opened: {self.data_addr}')
 
     def close_data_conn(self):
         if self.data_conn:
@@ -140,20 +141,18 @@ class ftp_client():
             self.close_data_conn()
             return
 
-        self.data_conn.setblocking(False)
         dst_path = os.path.join(os.getcwd(), local_dir, path)
         log('info', 'retrieve', f'Downloading file: {dst_path}')
 
         try:
             with open(dst_path, 'wb') as dst_file:
                 while True:
-                    data = self.data_sock.recv(self.buffer_size)
+                    data = self.data_conn.recv(self.buffer_size)
                     if not data:
                         break
                     dst_file.write(data)
         except OSError as e:
-            log('warn', 'retrieve',
-                f'Cannot open file: {dst_path}, error: {e}')
+            log('warn', 'retrieve', f'OS error: {e}')
         except socket.error:
             log('info', 'retrieve', 'Data connection closed.')
         else:
@@ -192,11 +191,13 @@ class ftp_client():
         while True:
             try:
                 raw_cmd = input('> ')
-                self.router(raw_cmd)
+                if raw_cmd:
+                    self.router(raw_cmd)
             except socket.timeout:
                 log('info', 'run', f'Connection timeout.')
                 self.close_ctrl_conn()
             except socket.error:
+                log('info', 'run', f'Remote connection closed.')
                 self.close_ctrl_conn()
             except KeyboardInterrupt:
                 print('\nInterrupted.')
