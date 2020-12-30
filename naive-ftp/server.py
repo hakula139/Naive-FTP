@@ -46,6 +46,8 @@ class ftp_server():
             225: '225 Data connection open; no transfer in progress.\r\n',
             226: '226 Closing data connection. Requested file action successful.\r\n',
             227: '227 Entering Passive Mode {}.\r\n'.format(parsed_addr(self.data_addr)),
+            250: '250 Requested file action okay, completed.\r\n',
+            450: '450 Requested file action not taken.\r\n',
             501: '501 Syntax error in parameters or arguments.\r\n',
             550: '550 Requested action not taken. File unavailable.\r\n',
         }
@@ -203,11 +205,22 @@ class ftp_server():
 
     def mkdir(self, path):
         dst_path = os.path.join(os.getcwd(), server_dir, path)
-        if not os.path.exists(dst_path):
-            os.makedirs(dst_path)
-            log('info', 'mkdir', f'Directory created: {dst_path}')
-        else:
+        if os.path.isdir(dst_path):
             log('info', 'mkdir', f'Directory already exists: {dst_path}')
+            self.send_status(250)
+        elif os.path.isfile(dst_path):
+            log('warn', 'mkdir', f'{dst_path} is an existing file.')
+            self.send_status(550)
+        else:
+            try:
+                os.makedirs(dst_path)
+            except OSError as e:
+                log('warn', 'mkdir',
+                    f'Failed to make directory: {dst_path}, error: {e}')
+                self.send_status(550)
+            else:
+                log('info', 'mkdir', f'Directory created: {dst_path}')
+                self.send_status(250)
 
     def router(self, raw_cmd):
         try:

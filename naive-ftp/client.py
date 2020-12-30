@@ -223,6 +223,8 @@ class ftp_client():
             return
 
         self.ctrl_conn.sendall(f'MKD {path}\r\n'.encode('utf-8'))
+        if not self.check_resp(250):
+            log('warn', 'mkdir', 'Failed to make directory. See server log for details.')
 
     def router(self, raw_cmd):
         try:
