@@ -339,12 +339,20 @@ class ftp_client():
             method_dict = {
                 'OPEN': self.open,
                 'QUIT': self.close,
-                'EXIT': self.close,
+                'EXIT': self.close,         # alias
+                'LIST': self.ls,
+                'LS': self.ls,              # alias
                 'RETR': self.retrieve,
+                'GET': self.retrieve,       # alias
                 'STOR': self.store,
+                'PUT': self.store,          # alias
                 'DELE': self.delete,
+                'DEL': self.delete,         # alias
+                'RM': self.delete,          # alias
                 'MKD': self.mkdir,
+                'MKDI': self.mkdir,         # alias
                 'RMD': self.rmdir,
+                'RMDI': self.rmdir,         # alias
                 'RMDA': self.rmdir_all,
             }
             method = method_dict.get(op[:4].upper())
