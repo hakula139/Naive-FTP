@@ -1,3 +1,6 @@
+import os
+
+
 def log(level: str, src: str, msg: str) -> None:
     '''
     A simple logger.
@@ -22,4 +25,4 @@ def is_safe_path(path: str, base_dir: str) -> bool:
     :param base_dir: base directory, requested path should be restricted inside
     '''
 
-    return path.startswith(base_dir)
+    return path.startswith(base_dir + os.sep)
