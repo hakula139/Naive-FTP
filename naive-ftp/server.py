@@ -1,10 +1,11 @@
 import socket
 import os
+from typing import Tuple
 from utils import log
 
-listen_host = socket.gethostname()
-listen_port = 2121
-server_dir = 'server_files'
+listen_host: str = socket.gethostname()
+listen_port: int = 2121
+server_dir: str = 'server_files'
 
 
 class ftp_server():
@@ -12,24 +13,42 @@ class ftp_server():
     Naive-FTP server side
     '''
 
-    def __init__(self):
+    def __init__(self) -> None:
+        '''
+        Initialize class variables.
+        '''
+
         # Properties
-        self.buffer_size = 1024
-        self.ctrl_timeout_duration = 60.0
-        self.data_timeout_duration = 3.0
+        self.buffer_size: int = 1024
+        self.ctrl_timeout_duration: float = 60.0
+        self.data_timeout_duration: float = 3.0
 
         # Control connection
-        self.ctrl_sock = None
-        self.ctrl_conn = None
-        self.client_addr = None
+        self.ctrl_sock: socket = None
+        self.ctrl_conn: socket = None
+        self.client_addr: Tuple[str, int] = None
 
         # Data connection
-        self.data_sock = None
-        self.data_conn = None
-        self.data_addr = None
+        self.data_sock: socket = None
+        self.data_conn: socket = None
+        self.data_addr: Tuple[str, int] = None
 
-    def send_status(self, status_code):
-        def parsed_addr(addr):
+    def send_status(self, status_code: int) -> None:
+        '''
+        Send a response based on status code.
+
+        :param status_code: status code
+        '''
+
+        def parsed_addr(addr: Tuple[str, int]) -> str:
+            '''
+            Return a parsed host address for status code 227.
+
+            Format: 'h1,h2,h3,h4,p1,p2'
+
+            :param addr: the address for data connection
+            '''
+
             try:
                 return '{host},{p1},{p2}'.format(
                     host=','.join(addr[0].split('.')),
@@ -58,7 +77,11 @@ class ftp_server():
         else:
             log('warn', 'send_status', f'Invalid status code: {status_code}')
 
-    def open_data_conn(self):
+    def open_data_conn(self) -> None:
+        '''
+        Open data connection.
+        '''
+
         if self.data_conn:
             self.close_data_conn()
         self.data_conn, self.data_addr = self.data_sock.accept()
@@ -67,7 +90,11 @@ class ftp_server():
             f'Data connection opened: {self.data_addr}')
         self.send_status(225)
 
-    def open_data_sock(self):
+    def open_data_sock(self) -> None:
+        '''
+        Open data socket.
+        '''
+
         if self.data_sock:
             self.close_data_sock()
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -81,14 +108,22 @@ class ftp_server():
             f'Data server started, listening at {self.data_addr}')
         self.send_status(227)
 
-    def close_data_conn(self):
+    def close_data_conn(self) -> None:
+        '''
+        Close data connection.
+        '''
+
         if self.data_conn:
             self.data_conn.close()
             self.data_conn = None
             log('info', 'close_data_conn',
                 f'Data connection closed: {self.data_addr}')
 
-    def close_data_sock(self):
+    def close_data_sock(self) -> None:
+        '''
+        Close data socket.
+        '''
+
         self.close_data_conn()
         if self.data_sock:
             self.data_sock.close()
@@ -96,13 +131,21 @@ class ftp_server():
             log('info', 'close_data_sock',
                 f'Data socket closed: {self.data_addr}')
 
-    def open_ctrl_conn(self):
+    def open_ctrl_conn(self) -> None:
+        '''
+        Open control connection.
+        '''
+
         self.ctrl_conn, self.client_addr = self.ctrl_sock.accept()
         self.ctrl_conn.settimeout(self.ctrl_timeout_duration)
         log('info', 'open_ctrl_conn', f'Accept connection: {self.client_addr}')
         self.send_status(220)
 
-    def open_ctrl_sock(self):
+    def open_ctrl_sock(self) -> None:
+        '''
+        Open control socket.
+        '''
+
         if self.ctrl_sock:
             self.close_ctrl_sock()
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -114,14 +157,22 @@ class ftp_server():
         log('info', 'open_ctrl_sock',
             f'Server started, listening at {self.ctrl_sock.getsockname()}')
 
-    def close_ctrl_conn(self):
+    def close_ctrl_conn(self) -> None:
+        '''
+        Close control connection.
+        '''
+
         if self.ctrl_conn:
             self.ctrl_conn.close()
             self.ctrl_conn = None
             log('info', 'close_ctrl_conn',
                 f'Connection closed: {self.client_addr}')
 
-    def close_ctrl_sock(self):
+    def close_ctrl_sock(self) -> None:
+        '''
+        Close control socket.
+        '''
+
         self.close_ctrl_conn()
         if self.ctrl_sock:
             self.ctrl_sock.close()
@@ -129,14 +180,28 @@ class ftp_server():
             log('info', 'close_ctrl_sock',
                 f'Socket closed: {self.client_addr}')
 
-    def close(self):
+    def close(self) -> None:
+        '''
+        Close all sockets.
+        '''
+
         self.close_data_sock()
         self.close_ctrl_sock()
 
-    def pong(self):
+    def pong(self) -> None:
+        '''
+        Respond to client. Pong!
+        '''
+
         self.send_status(220)
 
-    def retrieve(self, path):
+    def retrieve(self, path: str) -> None:
+        '''
+        Retrieve a file from server.
+
+        :param path: relative path to the file
+        '''
+
         src_path = os.path.join(os.getcwd(), server_dir, path)
         log('info', 'retrieve', f'Retrieving file: {src_path}')
 
@@ -168,7 +233,13 @@ class ftp_server():
         finally:
             self.close_data_sock()
 
-    def store(self, path):
+    def store(self, path: str) -> None:
+        '''
+        Store a file to server.
+
+        :param path: relative path to the file
+        '''
+
         dst_path = os.path.join(os.getcwd(), server_dir, path)
         log('info', 'store', f'Storing file: {dst_path}')
         dir_name, file_name = dst_path.rsplit(os.sep, 1)
@@ -200,7 +271,13 @@ class ftp_server():
         finally:
             self.close_data_sock()
 
-    def delete(self, path):
+    def delete(self, path: str) -> None:
+        '''
+        Delete a file from server.
+
+        :param path: relative path to the file
+        '''
+
         src_path = os.path.join(os.getcwd(), server_dir, path)
         log('info', 'delete', f'Deleting file: {src_path}')
 
@@ -215,7 +292,14 @@ class ftp_server():
             log('warn', 'delete', f'Failed to delete file: {src_path}')
             self.send_status(550)
 
-    def mkdir(self, path):
+    def mkdir(self, path: str, mode: int = 0) -> None:
+        '''
+        Make directory recursively.
+
+        :param path: relative path to the directory
+        :param mode: 0 for client, 1 for server internal use
+        '''
+
         dst_path = os.path.join(os.getcwd(), server_dir, path)
         try:
             os.makedirs(dst_path)
@@ -228,7 +312,13 @@ class ftp_server():
             log('warn', 'mkdir', f'Failed to make directory: {dst_path}')
             self.send_status(550)
 
-    def router(self, raw_cmd):
+    def router(self, raw_cmd: str) -> None:
+        '''
+        Route to the associated method based on client command.
+
+        :param raw_cmd: raw client command
+        '''
+
         try:
             cmd = raw_cmd.split(None, 1)
             op = cmd[0]
@@ -247,7 +337,11 @@ class ftp_server():
                 f'Invalid client operation: {raw_cmd}, error: {e}')
             self.send_status(501)
 
-    def run(self):
+    def run(self) -> None:
+        '''
+        Main function for server.
+        '''
+
         try:
             self.open_ctrl_sock()
             while self.ctrl_sock:
