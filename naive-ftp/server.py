@@ -243,7 +243,7 @@ class ftp_server():
         dst_path = os.path.join(os.getcwd(), server_dir, path)
         log('info', 'store', f'Storing file: {dst_path}')
         dir_name, file_name = dst_path.rsplit(os.sep, 1)
-        if not os.path.exists(dir_name):
+        if not os.path.isdir(dir_name):
             if self.mkdir(dir_name, is_client=False):  # failed to make directory
                 return
         if not file_name:  # make directory only

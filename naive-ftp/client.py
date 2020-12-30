@@ -52,7 +52,7 @@ class ftp_client():
 
         try:
             resp = get_resp()
-        except socket.timeout as e:
+        except socket.timeout:
             log('info', 'check_resp',
                 f'No response received, should be: {code}')
             return
@@ -240,6 +240,7 @@ class ftp_client():
         self.ctrl_conn.sendall(f'STOR {path}\r\n'.encode('utf-8'))
 
         if not self.check_resp(150):  # server status ok
+            log('info', 'store', 'Cannot store file in the requested directory.')
             return
         self.open_data_conn()
         if not self.check_resp(225):  # data connection established
@@ -324,7 +325,7 @@ class ftp_client():
                 method(path) if path else method()
             else:
                 log('info', 'router', f'Invalid operation: {raw_cmd}')
-        except TypeError as e:
+        except TypeError:
             log('info', 'router', f'Invalid operation: {raw_cmd}')
 
     def run(self) -> None:
