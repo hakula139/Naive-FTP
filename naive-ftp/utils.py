@@ -1,9 +1,12 @@
-def log(level, src, msg):
+def log(level: str, src: str, msg: str) -> None:
     '''
-    A simple logger
-        level: debug / info / warn / error / fatal
-        src:   called by which function
-        msg:   log message
+    A simple logger.
+
+    Log format: [LEVEL] src: msg
+
+    :param level: log level, can be 'debug' / 'info' / 'warn' / 'error' / 'fatal'
+    :param src: caller function name
+    :param msg: message body
     '''
 
     print(f'[{level.upper():5}] {src}: {msg}')
