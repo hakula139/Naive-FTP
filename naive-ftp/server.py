@@ -131,6 +131,9 @@ class ftp_server():
         self.close_data_sock()
         self.close_ctrl_sock()
 
+    def pong(self):
+        self.send_status(220)
+
     def retrieve(self, path):
         src_path = os.path.join(os.getcwd(), server_dir, path)
         log('info', 'retrieve', f'Retrieving file: {src_path}')
@@ -212,6 +215,7 @@ class ftp_server():
             op = cmd[0]
             path = cmd[1] if len(cmd) == 2 else None
             method_dict = {
+                'PING': self.pong,
                 'RETR': self.retrieve,
                 'STOR': self.store,
                 'DELE': self.delete,

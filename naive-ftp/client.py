@@ -135,8 +135,17 @@ class ftp_client():
         print('Bye!')
         sys.exit()
 
-    def retrieve(self, path):
+    def ping(self):
         if not self.ctrl_conn:
+            return False
+        self.ctrl_conn.sendall('PING\r\n'.encode('utf-8'))
+        if not self.check_resp(220):
+            self.close_ctrl_conn()
+            return False
+        return True
+
+    def retrieve(self, path):
+        if not self.ping():
             log('info', 'retrieve', 'Please connect to server first.')
             return
 
@@ -170,7 +179,7 @@ class ftp_client():
             self.close_data_conn()
 
     def store(self, path):
-        if not self.ctrl_conn:
+        if not self.ping():
             log('info', 'store', 'Please connect to server first.')
             return
 
@@ -209,7 +218,7 @@ class ftp_client():
         pass
 
     def mkdir(self, path):
-        if not self.ctrl_conn:
+        if not self.ping():
             log('info', 'mkdir', 'Please connect to server first.')
             return
 
