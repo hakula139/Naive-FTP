@@ -244,8 +244,8 @@ class ftp_server():
         log('info', 'store', f'Storing file: {dst_path}')
         dir_name, file_name = dst_path.rsplit(os.sep, 1)
         if not os.path.exists(dir_name):
-            os.makedirs(dir_name)
-            log('info', 'store', f'Directory created: {dir_name}')
+            if self.mkdir(dir_name, is_client=False):  # failed to make directory
+                return
         if not file_name:  # make directory only
             return
 
@@ -288,29 +288,37 @@ class ftp_server():
         try:
             os.remove(src_path)
             self.send_status(250)
-        except OSError as e:
+        except OSError:
             log('warn', 'delete', f'Failed to delete file: {src_path}')
             self.send_status(550)
 
-    def mkdir(self, path: str, mode: int = 0) -> None:
+    def mkdir(self, path: str, is_client: bool = True) -> int:
         '''
         Make directory recursively.
 
+        Return -1 if failed, else return 0.
+
         :param path: relative path to the directory
-        :param mode: 0 for client, 1 for server internal use
+        :param is_client: True for client, False for server internal use
         '''
 
-        dst_path = os.path.join(os.getcwd(), server_dir, path)
+        dst_path = os.path.join(
+            os.getcwd(), server_dir, path
+        ) if is_client else path
         try:
             os.makedirs(dst_path)
             if os.path.isdir(dst_path):
                 log('info', 'mkdir', f'Directory created: {dst_path}')
-                self.send_status(250)
+                if is_client:
+                    self.send_status(250)
             else:
                 raise OSError
-        except OSError as e:
+        except OSError:
             log('warn', 'mkdir', f'Failed to make directory: {dst_path}')
             self.send_status(550)
+            return -1
+        else:
+            return 0
 
     def router(self, raw_cmd: str) -> None:
         '''
@@ -358,7 +366,7 @@ class ftp_server():
                             break
                         log('debug', 'run', f'Operation: {raw_cmd}')
                         self.router(raw_cmd)
-                except (socket.timeout, socket.error) as e:
+                except (socket.timeout, socket.error):
                     pass
                 finally:
                     self.close_ctrl_conn()
