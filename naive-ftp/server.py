@@ -40,7 +40,6 @@ class ftp_server():
                 return ''
 
         status_dict = {
-            125: '125 Data connection already open; transfer starting.\r\n',
             150: '150 File status okay; about to open data connection.\r\n',
             220: '220 Service ready for new user.\r\n',
             221: '221 Service closing control connection.\r\n',
@@ -135,6 +134,7 @@ class ftp_server():
     def retrieve(self, path):
         src_path = os.path.join(os.getcwd(), server_dir, path)
         log('info', 'retrieve', f'Retrieving file: {src_path}')
+
         if not os.path.exists(src_path):
             self.send_status(550)
             return
@@ -145,7 +145,7 @@ class ftp_server():
                 if not self.data_sock:
                     self.open_data_sock()
                 self.open_data_conn()
-                self.send_status(125)
+                log('info', 'retrieve', 'Sending file.')
                 while True:
                     data = src_file.read(self.buffer_size)
                     if not data:
@@ -164,10 +164,47 @@ class ftp_server():
             self.close_data_sock()
 
     def store(self, path):
-        pass
+        dst_path = os.path.join(os.getcwd(), server_dir, path)
+        log('info', 'store', f'Storing file: {dst_path}')
+        dir_name, file_name = dst_path.rsplit(os.sep, 1)
+        if not os.path.exists(dir_name):
+            os.makedirs(dir_name)
+            log('info', 'store', f'Directory created: {dir_name}')
+        if not file_name:  # make directory only
+            return
+
+        try:
+            with open(dst_path, 'wb') as dst_file:
+                self.send_status(150)
+                if not self.data_sock:
+                    self.open_data_sock()
+                self.open_data_conn()
+                while True:
+                    data = self.data_conn.recv(self.buffer_size)
+                    if not data:
+                        break
+                    dst_file.write(data)
+        except OSError as e:
+            log('warn', 'store', f'OS error: {e}')
+            self.send_status(550)
+        except socket.timeout:
+            log('warn', 'store', f'Data connection timeout: {self.data_addr}')
+            self.send_status(426)
+        except socket.error:
+            pass
+        finally:
+            self.close_data_sock()
 
     def delete(self, path):
         pass
+
+    def mkdir(self, path):
+        dst_path = os.path.join(os.getcwd(), server_dir, path)
+        if not os.path.exists(dst_path):
+            os.makedirs(dst_path)
+            log('info', 'mkdir', f'Directory created: {dst_path}')
+        else:
+            log('info', 'mkdir', f'Directory already exists: {dst_path}')
 
     def router(self, raw_cmd):
         try:
@@ -178,6 +215,7 @@ class ftp_server():
                 'RETR': self.retrieve,
                 'STOR': self.store,
                 'DELE': self.delete,
+                'MKD': self.mkdir,
             }
             method = method_dict.get(op[:4].upper())
             method(path) if path else method()
@@ -199,7 +237,7 @@ class ftp_server():
                             .decode('utf-8')
                             .strip('\r\n')
                         )
-                        if not raw_cmd:  # Connection closed
+                        if not raw_cmd:  # connection closed
                             break
                         log('debug', 'run', f'Operation: {raw_cmd}')
                         self.router(raw_cmd)

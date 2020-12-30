@@ -34,24 +34,35 @@ class ftp_client():
         else returns None.
         '''
 
-        try:
-            resp = (
+        def get_resp():
+            return (
                 self.ctrl_conn
                 .recv(self.buffer_size)
                 .decode('utf-8')
                 .strip('\r\n')
             )
-            if resp[:3] != str(code):
-                log('warn', 'check_resp',
-                    f'Server response: {resp[:3]}, should be: {code}')
-                return None
-            return resp
-        except (socket.timeout, socket.error) as e:
-            log('info', 'check_resp', f'Remote connection closed: {e}')
+
+        try:
+            resp = get_resp()
+        except socket.timeout as e:
+            log('info', 'check_resp',
+                f'No response received, should be: {code}')
+            return None
+        except socket.error as e:
+            log('info', 'check_resp',
+                f'Remote connection closed: {e}, should be: {code}')
             self.close_ctrl_conn()
             return None
+
+        try:
+            if resp[:3] != str(code):
+                log('debug', 'check_resp',
+                    f'Response: {resp[:3]}, should be: {code}')
+                return None
+            return resp
         except Exception as e:
             log('error', 'check_resp', f'Unexpected exception: {e}')
+            self.close_ctrl_conn()
             return None
 
     def open_data_conn(self):
@@ -129,20 +140,18 @@ class ftp_client():
             log('info', 'retrieve', 'Please connect to server first.')
             return
 
+        dst_path = os.path.join(os.getcwd(), local_dir, path)
+        log('info', 'retrieve', f'Downloading file: {dst_path}')
+
         self.ctrl_conn.sendall(f'RETR {path}\r\n'.encode('utf-8'))
 
         if not self.check_resp(150):  # requested file available
+            log('info', 'retrieve', 'Requested file does not exist.')
             return
         self.open_data_conn()
         if not self.check_resp(225):  # data connection established
             self.close_data_conn()
             return
-        if not self.check_resp(125):  # transfer starting
-            self.close_data_conn()
-            return
-
-        dst_path = os.path.join(os.getcwd(), local_dir, path)
-        log('info', 'retrieve', f'Downloading file: {dst_path}')
 
         try:
             with open(dst_path, 'wb') as dst_file:
@@ -161,10 +170,50 @@ class ftp_client():
             self.close_data_conn()
 
     def store(self, path):
-        pass
+        if not self.ctrl_conn:
+            log('info', 'store', 'Please connect to server first.')
+            return
+
+        src_path = os.path.join(os.getcwd(), local_dir, path)
+        if not os.path.isfile(src_path):
+            log('info', 'store', 'File does not exist.')
+            return
+        log('info', 'store', f'Uploading file: {src_path}')
+
+        self.ctrl_conn.sendall(f'STOR {path}\r\n'.encode('utf-8'))
+
+        if not self.check_resp(150):  # server status ok
+            return
+        self.open_data_conn()
+        if not self.check_resp(225):  # data connection established
+            self.close_data_conn()
+            return
+
+        try:
+            with open(src_path, 'rb') as src_file:
+                while True:
+                    data = src_file.read(self.buffer_size)
+                    if not data:
+                        break
+                    self.data_conn.sendall(data)
+        except OSError as e:
+            log('warn', 'store', f'OS error: {e}')
+        except socket.error:
+            log('info', 'store', 'Data connection closed.')
+        else:
+            log('info', 'store', 'File successfully uploaded.')
+        finally:
+            self.close_data_conn()
 
     def delete(self, path):
         pass
+
+    def mkdir(self, path):
+        if not self.ctrl_conn:
+            log('info', 'mkdir', 'Please connect to server first.')
+            return
+
+        self.ctrl_conn.sendall(f'MKD {path}\r\n'.encode('utf-8'))
 
     def router(self, raw_cmd):
         try:
@@ -178,6 +227,7 @@ class ftp_client():
                 'RETR': self.retrieve,
                 'STOR': self.store,
                 'DELE': self.delete,
+                'MKD': self.mkdir,
             }
             method = method_dict.get(op[:4].upper())
             if method:
