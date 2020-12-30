@@ -205,22 +205,16 @@ class ftp_server():
 
     def mkdir(self, path):
         dst_path = os.path.join(os.getcwd(), server_dir, path)
-        if os.path.isdir(dst_path):
-            log('info', 'mkdir', f'Directory already exists: {dst_path}')
-            self.send_status(250)
-        elif os.path.isfile(dst_path):
-            log('warn', 'mkdir', f'{dst_path} is an existing file.')
-            self.send_status(550)
-        else:
-            try:
-                os.makedirs(dst_path)
-            except OSError as e:
-                log('warn', 'mkdir',
-                    f'Failed to make directory: {dst_path}, error: {e}')
-                self.send_status(550)
-            else:
+        try:
+            os.makedirs(dst_path)
+            if os.path.isdir(dst_path):
                 log('info', 'mkdir', f'Directory created: {dst_path}')
                 self.send_status(250)
+            else:
+                raise OSError
+        except OSError as e:
+            log('warn', 'mkdir', f'Failed to make directory: {dst_path}')
+            self.send_status(550)
 
     def router(self, raw_cmd):
         try:
