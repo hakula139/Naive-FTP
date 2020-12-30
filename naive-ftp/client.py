@@ -286,7 +286,7 @@ class ftp_client():
 
     def mkdir(self, path: str) -> None:
         '''
-        Make directory recursively.
+        Make a directory recursively.
 
         :param path: relative path to the directory
         '''
@@ -299,20 +299,31 @@ class ftp_client():
         expected, _, resp = self.check_resp(250)
         log('info' if expected else 'warn', 'mkdir', resp)
 
-    def rmdir(self, path: str) -> None:
+    def rmdir(self, path: str, recursive: bool = False) -> None:
         '''
-        Remove directory recursively.
+        Remove a directory.
 
         :param path: relative path to the directory
+        :param recursive: remove recursively if True
         '''
 
         if not self.ping():
             log('info', 'rmdir', 'Please connect to server first.')
             return
 
-        self.ctrl_conn.sendall(f'RMD {path}\r\n'.encode('utf-8'))
+        op = 'RMDA' if recursive else 'RMD'
+        self.ctrl_conn.sendall(f'{op} {path}\r\n'.encode('utf-8'))
         expected, _, resp = self.check_resp(250)
         log('info' if expected else 'warn', 'rmdir', resp)
+
+    def rmdir_all(self, path: str) -> None:
+        '''
+        Remove a directory recursively.
+
+        :param path: relative path to the directory
+        '''
+
+        self.rmdir(path, recursive=True)
 
     def router(self, raw_cmd: str) -> None:
         '''
@@ -334,6 +345,7 @@ class ftp_client():
                 'DELE': self.delete,
                 'MKD': self.mkdir,
                 'RMD': self.rmdir,
+                'RMDA': self.rmdir_all,
             }
             method = method_dict.get(op[:4].upper())
             if method:

@@ -1,3 +1,4 @@
+import shutil
 import socket
 import os
 from typing import Tuple
@@ -301,7 +302,7 @@ class ftp_server():
 
     def mkdir(self, path: str, is_client: bool = True) -> int:
         '''
-        Make directory recursively.
+        Make a directory recursively.
 
         Return -1 if failed, otherwise return 0.
 
@@ -331,11 +332,12 @@ class ftp_server():
         else:
             return 0
 
-    def rmdir(self, path: str) -> None:
+    def rmdir(self, path: str, recursive: bool = False) -> None:
         '''
-        Remove an empty directory.
+        Remove a directory.
 
         :param path: relative path to the directory
+        :param recursive: remove recursively if True
         '''
 
         src_path = os.path.realpath(os.path.join(self.server_dir, path))
@@ -345,13 +347,25 @@ class ftp_server():
             return
         try:
             if os.path.isdir(src_path):
-                os.rmdir(src_path)
+                if recursive:
+                    shutil.rmtree(src_path)
+                else:
+                    os.rmdir(src_path)
                 self.send_status(250)
             else:
                 raise OSError
         except OSError:
             log('warn', 'rmdir', f'Failed to remove directory: {src_path}')
             self.send_status(550)
+
+    def rmdir_all(self, path: str) -> None:
+        '''
+        Remove a directory recursively.
+
+        :param path: relative path to the directory
+        '''
+
+        self.rmdir(path, recursive=True)
 
     def router(self, raw_cmd: str) -> None:
         '''
@@ -371,6 +385,7 @@ class ftp_server():
                 'DELE': self.delete,
                 'MKD': self.mkdir,
                 'RMD': self.rmdir,
+                'RMDA': self.rmdir_all,
             }
             method = method_dict.get(op[:4].upper())
             method(path) if path else method()
