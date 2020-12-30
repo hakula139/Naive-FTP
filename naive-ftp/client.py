@@ -32,12 +32,12 @@ class ftp_client():
         self.data_conn: socket = None
         self.data_addr: Tuple[str, int] = None
 
-    def check_resp(self, code: int) -> str:
+    def check_resp(self, code: int) -> Tuple[bool, int, str]:
         '''
         Get a response from the server, and check its status code.
 
-        Return the response if the responded status code matches the expected one,
-        else return.
+        Return the check result, the responded status code and the response message.
+        The result is True if the status code is expected, otherwise False.
 
         :param code: expected status code
         '''
@@ -55,23 +55,24 @@ class ftp_client():
         except socket.timeout:
             log('info', 'check_resp',
                 f'No response received, should be: {code}')
-            return
+            return False, 0, None
         except socket.error as e:
             log('info', 'check_resp',
                 f'Remote connection closed: {e}, should be: {code}')
             self.close_ctrl_conn()
-            return
+            return False, 0, None
 
         try:
-            if resp[:3] != str(code):
+            resp_code, _ = resp.split(None, 1)
+            if resp_code != str(code):
                 log('debug', 'check_resp',
-                    f'Response: {resp[:3]}, should be: {code}')
-                return
-            return resp
-        except Exception as e:
-            log('error', 'check_resp', f'Unexpected exception: {e}')
+                    f'Response: {resp_code}, should be: {code}')
+                return False, resp_code, resp
+            return True, resp_code, resp
+        except ValueError as e:
+            log('error', 'check_resp', f'Invalid response: {resp}')
             self.close_ctrl_conn()
-            return
+            return False, 0, None
 
     def open_data_conn(self) -> None:
         '''
@@ -82,8 +83,8 @@ class ftp_client():
         self.data_conn.settimeout(self.data_timeout_duration)
 
         # Gets data_addr
-        resp = self.check_resp(227)
-        if not resp:  # not under passive mode
+        expected, _, resp = self.check_resp(227)
+        if not expected:  # not under passive mode
             self.close_data_conn()
             return
         addr = re.search(
@@ -91,7 +92,7 @@ class ftp_client():
             resp,
         )
         if not addr:  # invalid response
-            log('warn', 'open_data_conn', f'Invalid server response: {resp}')
+            log('warn', 'open_data_conn', f'Invalid response: {resp}')
             self.close_data_conn()
             return
         self.data_addr = (
@@ -135,7 +136,7 @@ class ftp_client():
         if err:
             log('warn', 'open_ctrl_conn', f'Connection failed. error: {err}')
             self.close_ctrl_conn()
-        elif not self.check_resp(220):
+        elif not self.check_resp(220)[0]:
             self.close_ctrl_conn()
         else:
             log('info', 'open_ctrl_conn', 'Connected to server.')
@@ -175,7 +176,7 @@ class ftp_client():
         if not self.ctrl_conn:
             return False
         self.ctrl_conn.sendall('PING\r\n'.encode('utf-8'))
-        if not self.check_resp(220):
+        if not self.check_resp(220)[0]:
             self.close_ctrl_conn()
             return False
         return True
@@ -196,11 +197,12 @@ class ftp_client():
 
         self.ctrl_conn.sendall(f'RETR {path}\r\n'.encode('utf-8'))
 
-        if not self.check_resp(150):  # requested file available
-            log('info', 'retrieve', 'Requested file not found or forbidden.')
+        expected, _, resp = self.check_resp(150)
+        if not expected:
+            log('warn', 'retrieve', resp)
             return
         self.open_data_conn()
-        if not self.check_resp(225):  # data connection established
+        if not self.check_resp(225)[0]:
             self.close_data_conn()
             return
 
@@ -233,17 +235,18 @@ class ftp_client():
 
         src_path = os.path.realpath(os.path.join(self.local_dir, path))
         if not os.path.isfile(src_path):
-            log('info', 'store', 'File does not exist.')
+            log('info', 'store', 'File not found.')
             return
         log('info', 'store', f'Uploading file: {src_path}')
 
         self.ctrl_conn.sendall(f'STOR {path}\r\n'.encode('utf-8'))
 
-        if not self.check_resp(150):  # server status ok
-            log('info', 'store', 'Cannot store file in the requested directory.')
+        expected, _, resp = self.check_resp(150)
+        if not expected:
+            log('info', 'store', resp)
             return
         self.open_data_conn()
-        if not self.check_resp(225):  # data connection established
+        if not self.check_resp(225)[0]:
             self.close_data_conn()
             return
 
@@ -278,10 +281,8 @@ class ftp_client():
 
         self.ctrl_conn.sendall(f'DELE {path}\r\n'.encode('utf-8'))
 
-        if not self.check_resp(250):
-            log('info', 'delete', 'Requested file does not exist.')
-        else:
-            log('info', 'delete', 'File successfully deleted.')
+        expected, _, resp = self.check_resp(250)
+        log('info' if expected else 'warn', 'delete', resp)
 
     def mkdir(self, path: str) -> None:
         '''
@@ -295,10 +296,23 @@ class ftp_client():
             return
 
         self.ctrl_conn.sendall(f'MKD {path}\r\n'.encode('utf-8'))
-        if not self.check_resp(250):
-            log('warn', 'mkdir', 'Failed to make directory.')
-        else:
-            log('info', 'mkdir', 'Directory successfully created.')
+        expected, _, resp = self.check_resp(250)
+        log('info' if expected else 'warn', 'mkdir', resp)
+
+    def rmdir(self, path: str) -> None:
+        '''
+        Remove directory recursively.
+
+        :param path: relative path to the directory
+        '''
+
+        if not self.ping():
+            log('info', 'rmdir', 'Please connect to server first.')
+            return
+
+        self.ctrl_conn.sendall(f'RMD {path}\r\n'.encode('utf-8'))
+        expected, _, resp = self.check_resp(250)
+        log('info' if expected else 'warn', 'rmdir', resp)
 
     def router(self, raw_cmd: str) -> None:
         '''
@@ -319,6 +333,7 @@ class ftp_client():
                 'STOR': self.store,
                 'DELE': self.delete,
                 'MKD': self.mkdir,
+                'RMD': self.rmdir,
             }
             method = method_dict.get(op[:4].upper())
             if method:

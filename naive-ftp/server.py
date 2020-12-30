@@ -303,7 +303,7 @@ class ftp_server():
         '''
         Make directory recursively.
 
-        Return -1 if failed, else return 0.
+        Return -1 if failed, otherwise return 0.
 
         :param path: relative path to the directory
         :param is_client: True for client, False for server internal use
@@ -317,7 +317,8 @@ class ftp_server():
             self.send_status(553)
             return
         try:
-            os.makedirs(dst_path)
+            if not os.path.exists(dst_path):
+                os.makedirs(dst_path)
             if os.path.isdir(dst_path):
                 if is_client:
                     self.send_status(250)
@@ -329,6 +330,28 @@ class ftp_server():
             return -1
         else:
             return 0
+
+    def rmdir(self, path: str) -> None:
+        '''
+        Remove an empty directory.
+
+        :param path: relative path to the directory
+        '''
+
+        src_path = os.path.realpath(os.path.join(self.server_dir, path))
+        log('info', 'rmdir', f'Removing directory: {src_path}')
+        if not is_safe_path(src_path, self.server_dir):
+            self.send_status(553)
+            return
+        try:
+            if os.path.isdir(src_path):
+                os.rmdir(src_path)
+                self.send_status(250)
+            else:
+                raise OSError
+        except OSError:
+            log('warn', 'rmdir', f'Failed to remove directory: {src_path}')
+            self.send_status(550)
 
     def router(self, raw_cmd: str) -> None:
         '''
@@ -347,6 +370,7 @@ class ftp_server():
                 'STOR': self.store,
                 'DELE': self.delete,
                 'MKD': self.mkdir,
+                'RMD': self.rmdir,
             }
             method = method_dict.get(op[:4].upper())
             method(path) if path else method()
