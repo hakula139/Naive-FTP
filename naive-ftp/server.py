@@ -312,13 +312,13 @@ class ftp_server():
         dst_path = os.path.realpath(
             os.path.join(self.server_dir, path)
         ) if is_client else path
+        log('info', 'mkdir', f'Creating directory: {dst_path}')
         if not is_safe_path(dst_path, self.server_dir):
             self.send_status(553)
             return
         try:
             os.makedirs(dst_path)
             if os.path.isdir(dst_path):
-                log('info', 'mkdir', f'Directory created: {dst_path}')
                 if is_client:
                     self.send_status(250)
             else:

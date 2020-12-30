@@ -296,7 +296,7 @@ class ftp_client():
 
         self.ctrl_conn.sendall(f'MKD {path}\r\n'.encode('utf-8'))
         if not self.check_resp(250):
-            log('warn', 'mkdir', 'Failed to make directory. See server log for details.')
+            log('warn', 'mkdir', 'Failed to make directory.')
         else:
             log('info', 'mkdir', 'Directory successfully created.')
 
