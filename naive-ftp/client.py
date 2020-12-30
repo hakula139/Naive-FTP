@@ -101,7 +101,7 @@ class ftp_client():
             self.data_conn = None
 
     def open_ctrl_conn(self):
-        if self.ctrl_conn:
+        if self.ping():
             op = input(
                 'Already connected. Close and establish a new connection? (y/N): ',
             )
@@ -215,7 +215,18 @@ class ftp_client():
             self.close_data_conn()
 
     def delete(self, path):
-        pass
+        if not self.ping():
+            log('info', 'delete', 'Please connect to server first.')
+            return
+
+        log('info', 'delete', f'Deleting file: {path}')
+
+        self.ctrl_conn.sendall(f'DELE {path}\r\n'.encode('utf-8'))
+
+        if not self.check_resp(250):
+            log('info', 'delete', 'Requested file does not exist.')
+        else:
+            log('info', 'delete', 'File successfully deleted.')
 
     def mkdir(self, path):
         if not self.ping():
@@ -225,6 +236,8 @@ class ftp_client():
         self.ctrl_conn.sendall(f'MKD {path}\r\n'.encode('utf-8'))
         if not self.check_resp(250):
             log('warn', 'mkdir', 'Failed to make directory. See server log for details.')
+        else:
+            log('info', 'mkdir', 'Directory successfully created.')
 
     def router(self, raw_cmd):
         try:

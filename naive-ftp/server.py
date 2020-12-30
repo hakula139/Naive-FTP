@@ -201,7 +201,19 @@ class ftp_server():
             self.close_data_sock()
 
     def delete(self, path):
-        pass
+        src_path = os.path.join(os.getcwd(), server_dir, path)
+        log('info', 'delete', f'Deleting file: {src_path}')
+
+        if not os.path.isfile(src_path):
+            self.send_status(550)
+            return
+
+        try:
+            os.remove(src_path)
+            self.send_status(250)
+        except OSError as e:
+            log('warn', 'delete', f'Failed to delete file: {src_path}')
+            self.send_status(550)
 
     def mkdir(self, path):
         dst_path = os.path.join(os.getcwd(), server_dir, path)
