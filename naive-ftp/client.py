@@ -7,7 +7,6 @@ from utils import log
 
 server_host: str = socket.gethostname()
 server_port: int = 2121
-local_dir: str = 'local_files'
 
 
 class ftp_client():
@@ -24,6 +23,7 @@ class ftp_client():
         self.buffer_size: int = 1024
         self.ctrl_timeout_duration: float = 3.0
         self.data_timeout_duration: float = 3.0
+        self.local_dir: str = os.path.join(os.getcwd(), 'local_files')
 
         # Control connection
         self.ctrl_conn: socket = None
@@ -191,13 +191,13 @@ class ftp_client():
             log('info', 'retrieve', 'Please connect to server first.')
             return
 
-        dst_path = os.path.join(os.getcwd(), local_dir, path)
+        dst_path = os.path.realpath(os.path.join(self.local_dir, path))
         log('info', 'retrieve', f'Downloading file: {dst_path}')
 
         self.ctrl_conn.sendall(f'RETR {path}\r\n'.encode('utf-8'))
 
         if not self.check_resp(150):  # requested file available
-            log('info', 'retrieve', 'Requested file does not exist.')
+            log('info', 'retrieve', 'Requested file not found or forbidden.')
             return
         self.open_data_conn()
         if not self.check_resp(225):  # data connection established
@@ -231,7 +231,7 @@ class ftp_client():
             log('info', 'store', 'Please connect to server first.')
             return
 
-        src_path = os.path.join(os.getcwd(), local_dir, path)
+        src_path = os.path.realpath(os.path.join(self.local_dir, path))
         if not os.path.isfile(src_path):
             log('info', 'store', 'File does not exist.')
             return

@@ -1,11 +1,10 @@
 import socket
 import os
 from typing import Tuple
-from utils import log
+from utils import log, is_safe_path
 
 listen_host: str = socket.gethostname()
 listen_port: int = 2121
-server_dir: str = 'server_files'
 
 
 class ftp_server():
@@ -17,11 +16,11 @@ class ftp_server():
         '''
         Initialize class variables.
         '''
-
         # Properties
         self.buffer_size: int = 1024
         self.ctrl_timeout_duration: float = 60.0
         self.data_timeout_duration: float = 3.0
+        self.server_dir: str = os.path.join(os.getcwd(), 'server_files')
 
         # Control connection
         self.ctrl_sock: socket = None
@@ -69,6 +68,7 @@ class ftp_server():
             450: '450 Requested file action not taken.\r\n',
             501: '501 Syntax error in parameters or arguments.\r\n',
             550: '550 Requested action not taken. File unavailable.\r\n',
+            553: '553 Requested action not taken. File name not allowed.\r\n',
         }
 
         status = status_dict.get(status_code)
@@ -202,9 +202,11 @@ class ftp_server():
         :param path: relative path to the file
         '''
 
-        src_path = os.path.join(os.getcwd(), server_dir, path)
+        src_path = os.path.realpath(os.path.join(self.server_dir, path))
         log('info', 'retrieve', f'Retrieving file: {src_path}')
-
+        if not is_safe_path(src_path, self.server_dir):
+            self.send_status(553)
+            return
         if not os.path.exists(src_path):
             self.send_status(550)
             return
@@ -240,8 +242,11 @@ class ftp_server():
         :param path: relative path to the file
         '''
 
-        dst_path = os.path.join(os.getcwd(), server_dir, path)
+        dst_path = os.path.realpath(os.path.join(self.server_dir, path))
         log('info', 'store', f'Storing file: {dst_path}')
+        if not is_safe_path(dst_path, self.server_dir):
+            self.send_status(553)
+            return
         dir_name, file_name = dst_path.rsplit(os.sep, 1)
         if not os.path.isdir(dir_name):
             if self.mkdir(dir_name, is_client=False):  # failed to make directory
@@ -278,9 +283,11 @@ class ftp_server():
         :param path: relative path to the file
         '''
 
-        src_path = os.path.join(os.getcwd(), server_dir, path)
+        src_path = os.path.realpath(os.path.join(self.server_dir, path))
         log('info', 'delete', f'Deleting file: {src_path}')
-
+        if not is_safe_path(src_path, self.server_dir):
+            self.send_status(553)
+            return
         if not os.path.isfile(src_path):
             self.send_status(550)
             return
@@ -302,9 +309,12 @@ class ftp_server():
         :param is_client: True for client, False for server internal use
         '''
 
-        dst_path = os.path.join(
-            os.getcwd(), server_dir, path
+        dst_path = os.path.realpath(
+            os.path.join(self.server_dir, path)
         ) if is_client else path
+        if not is_safe_path(dst_path, self.server_dir):
+            self.send_status(553)
+            return
         try:
             os.makedirs(dst_path)
             if os.path.isdir(dst_path):
