@@ -53,24 +53,21 @@ class ftp_client():
         try:
             resp = get_resp()
         except socket.timeout:
-            log('info', 'check_resp',
-                f'No response received, should be: {code}')
+            log('info', f'No response received, should be: {code}')
             return False, 0, None
         except socket.error as e:
-            log('info', 'check_resp',
-                f'Remote connection closed: {e}, should be: {code}')
+            log('info', f'Remote connection closed: {e}, should be: {code}')
             self.close_ctrl_conn()
             return False, 0, None
 
         try:
             resp_code, _ = resp.split(None, 1)
             if resp_code != str(code):
-                log('debug', 'check_resp',
-                    f'Response: {resp_code}, should be: {code}')
+                log('debug', f'Response: {resp_code}, should be: {code}')
                 return False, resp_code, resp
             return True, resp_code, resp
         except ValueError as e:
-            log('error', 'check_resp', f'Invalid response: {resp}')
+            log('error', f'Invalid response: {resp}')
             self.close_ctrl_conn()
             return False, 0, None
 
@@ -92,7 +89,7 @@ class ftp_client():
             resp,
         )
         if not addr:  # invalid response
-            log('warn', 'open_data_conn', f'Invalid response: {resp}')
+            log('warn', f'Invalid response: {resp}')
             self.close_data_conn()
             return
         self.data_addr = (
@@ -101,12 +98,10 @@ class ftp_client():
         )
         err = self.data_conn.connect_ex(self.data_addr)
         if err:
-            log('warn', 'open_data_conn',
-                f'Data connection failed. error: {err}')
+            log('warn', f'Data connection failed, error: {err}')
             self.close_data_conn()
         else:
-            log('info', 'open_data_conn',
-                f'Data connection opened: {self.data_addr}')
+            log('info', f'Data connection opened: {self.data_addr}')
 
     def close_data_conn(self) -> None:
         '''
@@ -134,12 +129,12 @@ class ftp_client():
         self.ctrl_conn.settimeout(self.ctrl_timeout_duration)
         err = self.ctrl_conn.connect_ex((server_host, server_port))
         if err:
-            log('warn', 'open_ctrl_conn', f'Connection failed. error: {err}')
+            log('warn', f'Connection failed, error: {err}')
             self.close_ctrl_conn()
         elif not self.check_resp(220)[0]:
             self.close_ctrl_conn()
         else:
-            log('info', 'open_ctrl_conn', 'Connected to server.')
+            log('info', 'Connected to server.')
 
     def close_ctrl_conn(self) -> None:
         '''
@@ -149,7 +144,7 @@ class ftp_client():
         if self.ctrl_conn:
             self.ctrl_conn.close()
             self.ctrl_conn = None
-            log('info', 'close_ctrl_conn', 'Connection closed.')
+            log('info', 'Connection closed.')
 
     def open(self) -> None:
         '''
@@ -189,17 +184,17 @@ class ftp_client():
         '''
 
         if not self.ping():
-            log('info', 'retrieve', 'Please connect to server first.')
+            log('info', 'Please connect to server first.')
             return
 
         dst_path = os.path.realpath(os.path.join(self.local_dir, path))
-        log('info', 'retrieve', f'Downloading file: {dst_path}')
+        log('info', f'Downloading file: {dst_path}')
 
         self.ctrl_conn.sendall(f'RETR {path}\r\n'.encode('utf-8'))
 
         expected, _, resp = self.check_resp(150)
         if not expected:
-            log('warn', 'retrieve', resp)
+            log('warn', resp)
             return
         self.open_data_conn()
         if not self.check_resp(225)[0]:
@@ -214,11 +209,11 @@ class ftp_client():
                         break
                     dst_file.write(data)
         except OSError as e:
-            log('warn', 'retrieve', f'OS error: {e}')
+            log('warn', f'OS error: {e}')
         except socket.error:
-            log('info', 'retrieve', 'Data connection closed.')
+            log('info', 'Data connection closed.')
         else:
-            log('info', 'retrieve', 'File successfully downloaded.')
+            log('info', 'File successfully downloaded.')
         finally:
             self.close_data_conn()
 
@@ -230,20 +225,20 @@ class ftp_client():
         '''
 
         if not self.ping():
-            log('info', 'store', 'Please connect to server first.')
+            log('info', 'Please connect to server first.')
             return
 
         src_path = os.path.realpath(os.path.join(self.local_dir, path))
         if not os.path.isfile(src_path):
-            log('info', 'store', 'File not found.')
+            log('info', 'File not found.')
             return
-        log('info', 'store', f'Uploading file: {src_path}')
+        log('info', f'Uploading file: {src_path}')
 
         self.ctrl_conn.sendall(f'STOR {path}\r\n'.encode('utf-8'))
 
         expected, _, resp = self.check_resp(150)
         if not expected:
-            log('info', 'store', resp)
+            log('info', resp)
             return
         self.open_data_conn()
         if not self.check_resp(225)[0]:
@@ -258,11 +253,11 @@ class ftp_client():
                         break
                     self.data_conn.sendall(data)
         except OSError as e:
-            log('warn', 'store', f'OS error: {e}')
+            log('warn', f'OS error: {e}')
         except socket.error:
-            log('info', 'store', 'Data connection closed.')
+            log('info', 'Data connection closed.')
         else:
-            log('info', 'store', 'File successfully uploaded.')
+            log('info', 'File successfully uploaded.')
         finally:
             self.close_data_conn()
 
@@ -274,15 +269,15 @@ class ftp_client():
         '''
 
         if not self.ping():
-            log('info', 'delete', 'Please connect to server first.')
+            log('info', 'Please connect to server first.')
             return
 
-        log('info', 'delete', f'Deleting file: {path}')
+        log('info', f'Deleting file: {path}')
 
         self.ctrl_conn.sendall(f'DELE {path}\r\n'.encode('utf-8'))
 
         expected, _, resp = self.check_resp(250)
-        log('info' if expected else 'warn', 'delete', resp)
+        log('info' if expected else 'warn', resp)
 
     def mkdir(self, path: str) -> None:
         '''
@@ -292,12 +287,12 @@ class ftp_client():
         '''
 
         if not self.ping():
-            log('info', 'mkdir', 'Please connect to server first.')
+            log('info', 'Please connect to server first.')
             return
 
         self.ctrl_conn.sendall(f'MKD {path}\r\n'.encode('utf-8'))
         expected, _, resp = self.check_resp(250)
-        log('info' if expected else 'warn', 'mkdir', resp)
+        log('info' if expected else 'warn', resp)
 
     def rmdir(self, path: str, recursive: bool = False) -> None:
         '''
@@ -308,13 +303,13 @@ class ftp_client():
         '''
 
         if not self.ping():
-            log('info', 'rmdir', 'Please connect to server first.')
+            log('info', 'Please connect to server first.')
             return
 
         op = 'RMDA' if recursive else 'RMD'
         self.ctrl_conn.sendall(f'{op} {path}\r\n'.encode('utf-8'))
         expected, _, resp = self.check_resp(250)
-        log('info' if expected else 'warn', 'rmdir', resp)
+        log('info' if expected else 'warn', resp)
 
     def rmdir_all(self, path: str) -> None:
         '''
@@ -357,9 +352,9 @@ class ftp_client():
             if method:
                 method(path) if path else method()
             else:
-                log('info', 'router', f'Invalid operation: {raw_cmd}')
+                log('info', f'Invalid operation: {raw_cmd}')
         except TypeError:
-            log('info', 'router', f'Invalid operation: {raw_cmd}')
+            log('info', f'Invalid operation: {raw_cmd}')
 
     def run(self) -> None:
         '''
@@ -372,17 +367,17 @@ class ftp_client():
                 if raw_cmd:
                     self.router(raw_cmd)
             except socket.timeout:
-                log('info', 'run', f'Connection timeout.')
+                log('info', f'Connection timeout.')
                 self.close_ctrl_conn()
             except socket.error:
-                log('info', 'run', f'Remote connection closed.')
+                log('info', f'Remote connection closed.')
                 self.close_ctrl_conn()
             except KeyboardInterrupt:
                 print('\nInterrupted.')
                 self.close()
                 break
             except Exception as e:
-                log('error', 'run', f'Unexpected exception: {e}')
+                log('error', f'Unexpected exception: {e}')
                 self.close()
                 raise
 
