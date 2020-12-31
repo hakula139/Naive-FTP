@@ -2,6 +2,8 @@ import socket
 import sys
 import os
 import re
+import stat
+from datetime import datetime
 from typing import Callable, Tuple
 from utils import log
 
@@ -42,7 +44,7 @@ class ftp_client():
         :param code: expected status code
         '''
 
-        def get_resp() -> str:
+        def _get_resp() -> str:
             return (
                 self.ctrl_conn
                 .recv(self.buffer_size)
@@ -51,7 +53,7 @@ class ftp_client():
             )
 
         try:
-            resp = get_resp()
+            resp = _get_resp()
         except socket.timeout:
             log('info', f'No response received, should be: {code}')
             return False, 0, None
@@ -89,7 +91,7 @@ class ftp_client():
             resp,
         )
         if not addr:  # invalid response
-            log('warn', f'Invalid response: {resp}')
+            log('error', f'Invalid response: {resp}')
             self.close_data_conn()
             return
         self.data_addr = (
@@ -98,7 +100,7 @@ class ftp_client():
         )
         err = self.data_conn.connect_ex(self.data_addr)
         if err:
-            log('warn', f'Data connection failed, error: {err}')
+            log('error', f'Data connection failed, error: {err}')
             self.close_data_conn()
         else:
             log('info', f'Data connection opened: {self.data_addr}')
@@ -129,7 +131,7 @@ class ftp_client():
         self.ctrl_conn.settimeout(self.ctrl_timeout_duration)
         err = self.ctrl_conn.connect_ex((server_host, server_port))
         if err:
-            log('warn', f'Connection failed, error: {err}')
+            log('error', f'Connection failed, error: {err}')
             self.close_ctrl_conn()
         elif not self.check_resp(220)[0]:
             self.close_ctrl_conn()
@@ -151,7 +153,7 @@ class ftp_client():
         Show a list of available commands.
         '''
 
-        def print_cmd(cmd: str, usage: str, descr: str) -> None:
+        def _print_cmd(cmd: str, usage: str, descr: str) -> None:
             '''
             Print a command and its usage.
 
@@ -162,7 +164,7 @@ class ftp_client():
 
             print(f'   {cmd:4} {usage:10} {descr}')
 
-        def read_doc(method: Callable) -> str:
+        def _read_doc(method: Callable) -> str:
             '''
             Read the first line of the docstring for a method.
 
@@ -172,22 +174,24 @@ class ftp_client():
             return method.__doc__.split('\n')[1]
 
         print('COMMANDS:')
-        print_cmd('HELP', '', read_doc(self.help))
-        print_cmd('OPEN', '', read_doc(self.open))
-        print_cmd('QUIT', '', read_doc(self.close))
-        print_cmd('EXIT', '', read_doc(self.close))
-        print_cmd('RETR', '<path>', read_doc(self.retrieve))
-        print_cmd('GET', '<path>', read_doc(self.retrieve))
-        print_cmd('STOR', '<path>', read_doc(self.store))
-        print_cmd('PUT', '<path>', read_doc(self.store))
-        print_cmd('DELE', '<path>', read_doc(self.delete))
-        print_cmd('DEL', '<path>', read_doc(self.delete))
-        print_cmd('RM', '<path>', read_doc(self.delete))
-        print_cmd('MKD', '<path>', read_doc(self.mkdir))
-        print_cmd('MKDI', '<path>', read_doc(self.mkdir))
-        print_cmd('RMD', '<path>', read_doc(self.rmdir))
-        print_cmd('RMDI', '<path>', read_doc(self.rmdir))
-        print_cmd('RMDA', '<path>', read_doc(self.rmdir_all))
+        _print_cmd('HELP', '', _read_doc(self.help))
+        _print_cmd('OPEN', '', _read_doc(self.open))
+        _print_cmd('QUIT', '', _read_doc(self.close))
+        _print_cmd('EXIT', '', _read_doc(self.close))
+        _print_cmd('LIST', '<path>', _read_doc(self.ls))
+        _print_cmd('LS', '<path>', _read_doc(self.ls))
+        _print_cmd('RETR', '<path>', _read_doc(self.retrieve))
+        _print_cmd('GET', '<path>', _read_doc(self.retrieve))
+        _print_cmd('STOR', '<path>', _read_doc(self.store))
+        _print_cmd('PUT', '<path>', _read_doc(self.store))
+        _print_cmd('DELE', '<path>', _read_doc(self.delete))
+        _print_cmd('DEL', '<path>', _read_doc(self.delete))
+        _print_cmd('RM', '<path>', _read_doc(self.delete))
+        _print_cmd('MKD', '<path>', _read_doc(self.mkdir))
+        _print_cmd('MKDI', '<path>', _read_doc(self.mkdir))
+        _print_cmd('RMD', '<path>', _read_doc(self.rmdir))
+        _print_cmd('RMDI', '<path>', _read_doc(self.rmdir))
+        _print_cmd('RMDA', '<path>', _read_doc(self.rmdir_all))
 
     def open(self) -> None:
         '''
@@ -222,6 +226,109 @@ class ftp_client():
             return False
         else:
             return True
+
+    def ls(self, path: str) -> None:
+        '''
+        List information of a file or directory.
+
+        :param path: relative path to the file or directory
+        '''
+
+        def _parse_stat(resp: str) -> Tuple[str, str, str, str, str, str]:
+            '''
+            Parse the raw response to a list for output.
+
+            Return file name, file size, file type, last modified time,
+            permissions and owner.
+
+            :param resp: server response
+            '''
+
+            def _parse_type(st_mode: int) -> str:
+                '''
+                Interpret the result of st_mode to file type.
+
+                Return file type.
+
+                :param st_mode: file mode
+                '''
+
+                type_dict = {
+                    stat.S_ISREG: 'File',
+                    stat.S_ISDIR: 'Dir',
+                    stat.S_ISLNK: 'Link',
+                }
+                for check in type_dict:
+                    if check(st_mode):
+                        return type_dict[check]
+                return 'Unk'
+
+            def _parse_perms(st_mode: int) -> str:
+                '''
+                Interpret the result of st_mode to permissions.
+
+                Return a Unix-like permission string.
+
+                :param st_mode: file mode
+                '''
+
+                perm_dict = {
+                    stat.S_IRUSR: 'r', stat.S_IWUSR: 'w', stat.S_IXUSR: 'x',
+                    stat.S_IRGRP: 'r', stat.S_IWGRP: 'w', stat.S_IXGRP: 'x',
+                    stat.S_IROTH: 'r', stat.S_IWOTH: 'w', stat.S_IXOTH: 'x',
+                }
+                perms = 'd' if stat.S_ISDIR(st_mode) else '-'
+                for perm in perm_dict:
+                    perms += perm_dict[perm] if st_mode & perm else '-'
+                return perms
+
+            try:
+                file_name, st_size, st_mode, st_mtime, st_uid = (
+                    resp.decode('utf-8').strip('\r\n').split(' ')
+                )
+                file_name = file_name.replace('%20', ' ')
+                file_size = f'{st_size} B'
+                file_type = _parse_type(int(st_mode))
+                mod_time = (
+                    datetime.fromtimestamp(float(st_mtime))
+                    .strftime('%Y-%m-%d %H:%M:%S')
+                )
+                perms = _parse_perms(int(st_mode))
+                owner = st_uid
+            except (ValueError, TypeError) as e:
+                log('error', f'Invalid response: {resp}, error: {e}')
+                return
+            else:
+                return file_name, file_size, file_type, mod_time, perms, owner
+
+        if not self.ping():
+            log('info', 'Please connect to server first.')
+            return
+
+        self.ctrl_conn.sendall(f'LIST {path}\r\n'.encode('utf-8'))
+
+        expected, _, resp = self.check_resp(150)
+        if not expected:
+            log('warn', resp)
+            return
+        self.open_data_conn()
+        if not self.check_resp(225)[0]:
+            self.close_data_conn()
+            return
+
+        try:
+            while True:
+                data = self.data_conn.recv(self.buffer_size)
+                if not data:
+                    break
+                info = _parse_stat(data)
+                if not info:  # invalid response
+                    print('Invalid file information')
+                print('\t'.join(info))
+        except socket.error:
+            log('info', 'Data connection closed.')
+        finally:
+            self.close_data_conn()
 
     def retrieve(self, path: str) -> None:
         '''
@@ -383,6 +490,8 @@ class ftp_client():
                 'OPEN': self.open,
                 'QUIT': self.close,
                 'EXIT': self.close,         # alias
+                'LIST': self.ls,
+                'LS': self.ls,              # alias
                 'RETR': self.retrieve,
                 'GET': self.retrieve,       # alias
                 'STOR': self.store,
@@ -401,8 +510,8 @@ class ftp_client():
                 method(path) if path else method()
             else:
                 log('info', f'Invalid operation: {raw_cmd}')
-        except TypeError:
-            log('info', f'Invalid operation: {raw_cmd}')
+        except TypeError as e:
+            log('info', f'Invalid operation: {raw_cmd}, error: {e}')
 
     def run(self) -> None:
         '''

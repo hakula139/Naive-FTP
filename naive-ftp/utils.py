@@ -23,7 +23,7 @@ def log(level: str, msg: str) -> None:
     print(f'[{level.upper():5}] {caller()}: {msg}')
 
 
-def is_safe_path(path: str, base_dir: str) -> bool:
+def is_safe_path(path: str, base_dir: str, allow_base: bool = False) -> bool:
     '''
     Check if the requested path is safe to access.
 
@@ -31,6 +31,10 @@ def is_safe_path(path: str, base_dir: str) -> bool:
 
     :param path: requested path
     :param base_dir: base directory, requested path should be restricted inside
+    :param allow_base: if allowed to access base directory
     '''
 
-    return path.startswith(base_dir + os.sep)
+    return (
+        os.path.realpath(path)
+        .startswith(base_dir + '' if allow_base else os.sep)
+    )

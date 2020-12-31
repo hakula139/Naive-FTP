@@ -44,7 +44,7 @@ class ftp_server(threading.Thread):
         :param status_code: status code
         '''
 
-        def parsed_addr(addr: Tuple[str, int]) -> str:
+        def _parsed_addr(addr: Tuple[str, int]) -> str:
             '''
             Return a parsed host address for status code 227.
 
@@ -68,7 +68,7 @@ class ftp_server(threading.Thread):
             221: '221 Service closing control connection.\r\n',
             225: '225 Data connection open; no transfer in progress.\r\n',
             226: '226 Closing data connection. Requested file action successful.\r\n',
-            227: '227 Entering Passive Mode {}.\r\n'.format(parsed_addr(self.data_addr)),
+            227: '227 Entering Passive Mode {}.\r\n'.format(_parsed_addr(self.data_addr)),
             250: '250 Requested file action okay, completed.\r\n',
             450: '450 Requested file action not taken.\r\n',
             501: '501 Syntax error in parameters or arguments.\r\n',
@@ -80,7 +80,7 @@ class ftp_server(threading.Thread):
         if status:
             self.ctrl_conn.sendall(status.encode('utf-8'))
         else:
-            log('warn', f'Invalid status code: {status_code}')
+            log('error', f'Invalid status code: {status_code}')
 
     def open_data_conn(self) -> None:
         '''
@@ -138,6 +138,63 @@ class ftp_server(threading.Thread):
         '''
 
         self.send_status(220)
+
+    def ls(self, path: str) -> None:
+        '''
+        List information of a file or directory.
+
+        :param path: relative path to the file or directory
+        '''
+
+        def _parse_stat(raw_stat: os.stat_result) -> str:
+            '''
+            Parse the raw stat_result to a string for response.
+
+            Return file size, file mode, last modified time, permissions and owner id.
+
+            :param raw_stat: stat_result of a file or directory
+            '''
+
+            s = []
+            s.append(raw_stat.st_size)   # file size
+            s.append(raw_stat.st_mode)   # file mode
+            s.append(raw_stat.st_mtime)  # last modified time
+            s.append(raw_stat.st_uid)    # owner id
+            return ' '.join([str(i) for i in s])
+
+        src_path = os.path.realpath(os.path.join(self.server_dir, path))
+        log('info', f'Listing information of: {src_path}')
+        if not is_safe_path(src_path, self.server_dir, allow_base=True):
+            self.send_status(553)
+            return
+        if not os.path.exists(src_path):
+            self.send_status(550)
+            return
+
+        try:
+            self.send_status(150)
+            if not self.data_sock:
+                self.open_data_sock()
+            self.open_data_conn()
+            log('info', 'Sending list.')
+            with os.scandir(src_path) as it:
+                for file in it:
+                    if not file.name.startswith('.'):
+                        file_name = file.name.replace(' ', '%20')
+                        info = _parse_stat(file.stat())
+                        self.data_conn.sendall(
+                            f'{file_name} {info}\r\n'.encode('utf-8')
+                        )
+        except OSError as e:
+            log('warn', f'OS error: {e}')
+            self.send_status(550)
+        except socket.timeout:
+            log('warn', f'Data connection timeout: {self.data_addr}')
+            self.send_status(426)
+        except socket.error:
+            pass
+        finally:
+            self.close_data_sock()
 
     def retrieve(self, path: str) -> None:
         '''
@@ -322,6 +379,7 @@ class ftp_server(threading.Thread):
             path = cmd[1] if len(cmd) == 2 else None
             method_dict = {
                 'PING': self.pong,
+                'LIST': self.ls,
                 'RETR': self.retrieve,
                 'STOR': self.store,
                 'DELE': self.delete,
