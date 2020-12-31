@@ -340,8 +340,6 @@ class ftp_client():
                 'OPEN': self.open,
                 'QUIT': self.close,
                 'EXIT': self.close,         # alias
-                'LIST': self.ls,
-                'LS': self.ls,              # alias
                 'RETR': self.retrieve,
                 'GET': self.retrieve,       # alias
                 'STOR': self.store,
