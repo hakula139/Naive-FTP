@@ -170,11 +170,15 @@ class ftp_client():
 
         if not self.ctrl_conn:
             return False
-        self.ctrl_conn.sendall('PING\r\n'.encode('utf-8'))
-        if not self.check_resp(220)[0]:
-            self.close_ctrl_conn()
+        try:
+            self.ctrl_conn.sendall('PING\r\n'.encode('utf-8'))
+            if not self.check_resp(220)[0]:
+                self.close_ctrl_conn()
+                return False
+        except (socket.timeout, socket.error):
             return False
-        return True
+        else:
+            return True
 
     def retrieve(self, path: str) -> None:
         '''
