@@ -2,7 +2,7 @@ import socket
 import sys
 import os
 import re
-from typing import Tuple
+from typing import Callable, Tuple
 from utils import log
 
 server_host: str = socket.gethostname()
@@ -146,9 +146,52 @@ class ftp_client():
             self.ctrl_conn = None
             log('info', 'Connection closed.')
 
+    def help(self) -> None:
+        '''
+        Show a list of available commands.
+        '''
+
+        def print_cmd(cmd: str, usage: str, descr: str) -> None:
+            '''
+            Print a command and its usage.
+
+            :param cmd: command
+            :param usage: the parameters of the command
+            :param descr: the description of the command
+            '''
+
+            print(f'   {cmd:4} {usage:10} {descr}')
+
+        def read_doc(method: Callable) -> str:
+            '''
+            Read the first line of the docstring for a method.
+
+            :param method: a given method
+            '''
+
+            return method.__doc__.split('\n')[1]
+
+        print('COMMANDS:')
+        print_cmd('HELP', '', read_doc(self.help))
+        print_cmd('OPEN', '', read_doc(self.open))
+        print_cmd('QUIT', '', read_doc(self.close))
+        print_cmd('EXIT', '', read_doc(self.close))
+        print_cmd('RETR', '<path>', read_doc(self.retrieve))
+        print_cmd('GET', '<path>', read_doc(self.retrieve))
+        print_cmd('STOR', '<path>', read_doc(self.store))
+        print_cmd('PUT', '<path>', read_doc(self.store))
+        print_cmd('DELE', '<path>', read_doc(self.delete))
+        print_cmd('DEL', '<path>', read_doc(self.delete))
+        print_cmd('RM', '<path>', read_doc(self.delete))
+        print_cmd('MKD', '<path>', read_doc(self.mkdir))
+        print_cmd('MKDI', '<path>', read_doc(self.mkdir))
+        print_cmd('RMD', '<path>', read_doc(self.rmdir))
+        print_cmd('RMDI', '<path>', read_doc(self.rmdir))
+        print_cmd('RMDA', '<path>', read_doc(self.rmdir_all))
+
     def open(self) -> None:
         '''
-        Open connection to server.
+        Open a connection to server.
         '''
 
         self.open_ctrl_conn()
@@ -336,6 +379,7 @@ class ftp_client():
             op = cmd[0]
             path = cmd[1] if len(cmd) == 2 else None
             method_dict = {
+                'HELP': self.help,
                 'OPEN': self.open,
                 'QUIT': self.close,
                 'EXIT': self.close,         # alias
