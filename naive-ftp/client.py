@@ -25,13 +25,13 @@ class ftp_client():
         self.buffer_size: int = 1024
         self.ctrl_timeout_duration: float = 3.0
         self.data_timeout_duration: float = 3.0
-        self.local_dir: str = os.path.join(os.getcwd(), 'local_files')
+        self.local_dir: str = os.path.realpath('local_files')
 
         # Control connection
-        self.ctrl_conn: socket = None
+        self.ctrl_conn: socket.socket = None
 
         # Data connection
-        self.data_conn: socket = None
+        self.data_conn: socket.socket = None
         self.data_addr: Tuple[str, int] = None
 
     def check_resp(self, code: int) -> Tuple[bool, int, str]:

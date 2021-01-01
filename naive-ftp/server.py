@@ -1,24 +1,23 @@
 import shutil
 import socket
-import threading
 import os
-from typing import Tuple
+from threading import Thread
+from typing import Tuple, get_args
 from utils import log, is_safe_path
 
 # Control socket
 listen_host: str = socket.gethostname()
 listen_port: int = 2121
-listen_sock: Tuple[str, int] = (listen_host, listen_port)
 
 
-class ftp_server(threading.Thread):
+class ftp_server(Thread):
     '''
     Naive-FTP server instance
     '''
 
-    def __init__(self, ctrl_conn: socket, client_addr: Tuple[str, int]) -> None:
+    def __init__(self, ctrl_conn: socket.socket, client_addr: Tuple[str, int]) -> None:
         '''
-        Initialize server.
+        Initialize server instance.
         '''
 
         super().__init__()
@@ -26,15 +25,17 @@ class ftp_server(threading.Thread):
         # Properties
         self.buffer_size: int = 1024
         self.data_timeout_duration: float = 3.0
-        self.server_dir: str = os.path.join(os.getcwd(), 'server_files')
+        self.max_allowed_conn: int = 5
+        self.server_dir: str = os.path.realpath('server_files')
 
         # Control connection
-        self.ctrl_conn: socket = ctrl_conn
+        self.ctrl_conn: socket.socket = ctrl_conn
         self.client_addr: Tuple[str, int] = client_addr
 
         # Data connection
-        self.data_sock: socket = None
-        self.data_conn: socket = None
+        self.data_sock: socket.socket = None
+        self.data_sock_name: Tuple[str, int] = None
+        self.data_conn: socket.socket = None
         self.data_addr: Tuple[str, int] = None
 
     def send_status(self, status_code: int) -> None:
@@ -68,7 +69,7 @@ class ftp_server(threading.Thread):
             221: '221 Service closing control connection.\r\n',
             225: '225 Data connection open; no transfer in progress.\r\n',
             226: '226 Closing data connection. Requested file action successful.\r\n',
-            227: '227 Entering Passive Mode {}.\r\n'.format(_parsed_addr(self.data_addr)),
+            227: '227 Entering Passive Mode {}.\r\n'.format(_parsed_addr(self.data_sock_name)),
             250: '250 Requested file action okay, completed.\r\n',
             450: '450 Requested file action not taken.\r\n',
             501: '501 Syntax error in parameters or arguments.\r\n',
@@ -105,10 +106,10 @@ class ftp_server(threading.Thread):
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.settimeout(self.data_timeout_duration)
         s.bind((listen_host, 0))
-        s.listen(5)
+        s.listen(self.max_allowed_conn)
         self.data_sock = s
-        self.data_addr = self.data_sock.getsockname()
-        log('info', f'Data server started, listening at {self.data_addr}')
+        self.data_sock_name = s.getsockname()
+        log('info', f'Data server started, listening at {self.data_sock_name}')
         self.send_status(227)
 
     def close_data_conn(self) -> None:
@@ -130,7 +131,14 @@ class ftp_server(threading.Thread):
         if self.data_sock:
             self.data_sock.close()
             self.data_sock = None
-            log('info', f'Data socket closed: {self.data_addr}')
+            log('info', f'Data socket closed: {self.data_sock_name}')
+
+    def close(self) -> None:
+        '''
+        Close all sockets.
+        '''
+
+        self.close_data_sock()
 
     def pong(self) -> None:
         '''
@@ -414,51 +422,104 @@ class ftp_server(threading.Thread):
                 log('debug', f'Operation: {raw_cmd}')
                 self.router(raw_cmd)
         except (socket.timeout, socket.error):
-            if self.ctrl_conn:
-                self.ctrl_conn.close()
-                log('info', f'Connection closed: {self.client_addr}')
+            pass
+        finally:
+            self.close()
 
 
-def server_listener() -> None:
+class server_listener(Thread):
     '''
     Naive-FTP server listener
     '''
 
-    # Properties
-    ctrl_timeout_duration: float = 60.0
-    max_allowed_conn: int = 5
+    def __init__(self) -> None:
+        '''
+        Initialize server listener.
+        '''
 
-    # Control connection
-    ctrl_conn: socket = None
-    client_addr: Tuple[str, int] = None
+        super().__init__()
 
-    global ctrl_sock
-    ctrl_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    ctrl_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    ctrl_sock.bind(listen_sock)
-    ctrl_sock.listen(max_allowed_conn)
-    sockname = ctrl_sock.getsockname()
-    log('info', f'Server started, listening at {sockname}')
+        # Properties
+        self.ctrl_timeout_duration: float = 60.0
+        self.max_allowed_conn: int = 5
 
-    try:
-        while ctrl_sock:
-            ctrl_conn, client_addr = ctrl_sock.accept()
-            ctrl_conn.settimeout(ctrl_timeout_duration)
-            log('info', f'Accept connection: {client_addr}')
-            server = ftp_server(ctrl_conn, client_addr)
-            server.start()
-    except (socket.timeout, socket.error):
-        if ctrl_sock:
-            ctrl_sock.close()
-            ctrl_sock = None
-            log('info', f'Socket closed: {sockname}')
+        # Control connection
+        self.ctrl_sock: socket.socket = None
+        self.ctrl_sock_name: Tuple[str, int] = None
+        self.ctrl_conn: socket.socket = None
+        self.client_addr: Tuple[str, int] = None
+
+    def open_ctrl_conn(self) -> None:
+        '''
+        Open control connection.
+        '''
+
+        self.ctrl_conn, self.client_addr = self.ctrl_sock.accept()
+        self.ctrl_conn.settimeout(self.ctrl_timeout_duration)
+        log('info', f'Accept connection: {self.client_addr}')
+
+    def open_ctrl_sock(self) -> None:
+        '''
+        Open control socket.
+        '''
+
+        if self.ctrl_sock:
+            self.close_ctrl_sock()
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.bind((listen_host, listen_port))
+        s.listen(self.max_allowed_conn)
+        self.ctrl_sock = s
+        self.ctrl_sock_name = s.getsockname()
+        log('info', f'Server started, listening at {self.ctrl_sock_name}')
+
+    def close_ctrl_conn(self) -> None:
+        '''
+        Close control connection.
+        '''
+
+        if self.ctrl_conn:
+            self.ctrl_conn.close()
+            self.ctrl_conn = None
+            log('info', f'Control connection closed: {self.client_addr}')
+
+    def close_ctrl_sock(self) -> None:
+        '''
+        Close control socket.
+        '''
+
+        self.close_ctrl_conn()
+        if self.ctrl_sock:
+            self.ctrl_sock.close()
+            self.ctrl_sock = None
+            log('info', f'Control socket closed: {self.ctrl_sock_name}')
+
+    def close(self) -> None:
+        '''
+        Close all sockets.
+        '''
+
+        self.close_ctrl_sock()
+
+    def run(self) -> None:
+        '''
+        Main function for server listener.
+        '''
+
+        self.open_ctrl_sock()
+        try:
+            while self.ctrl_sock:
+                self.open_ctrl_conn()
+                server = ftp_server(self.ctrl_conn, self.client_addr)
+                server.start()
+        except (socket.timeout, socket.error):
+            self.close_ctrl_conn()
 
 
 def main() -> None:
     print('Welcome to Naive-FTP server! Press q to exit.')
 
-    listener = threading.Thread(target=server_listener)
-    listener.setDaemon(True)
+    listener = server_listener()
     listener.start()
 
     try:
@@ -469,9 +530,7 @@ def main() -> None:
     except KeyboardInterrupt:
         print('\nInterrupted.')
     finally:
-        if ctrl_sock:
-            ctrl_sock.close()
-            log('info', 'Control socket closed.')
+        listener.close()
         log('info', 'Server stopped.')
 
 
