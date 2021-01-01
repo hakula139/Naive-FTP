@@ -34,7 +34,6 @@ def is_safe_path(path: str, base_dir: str, allow_base: bool = False) -> bool:
     :param allow_base: if allowed to access base directory
     '''
 
-    return (
-        os.path.realpath(path)
-        .startswith(base_dir + '' if allow_base else os.sep)
-    )
+    if not allow_base:
+        base_dir += os.sep
+    return os.path.realpath(path).startswith(base_dir)
