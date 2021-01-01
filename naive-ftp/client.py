@@ -298,6 +298,8 @@ class ftp_client():
                     perms += perm_dict[perm] if st_mode & perm else '-'
                 return perms
 
+            if not resp:
+                return
             try:
                 file_name, st_size, st_mode, st_mtime, st_uid = resp.split(' ')
                 file_name = file_name.replace('%20', ' ')
@@ -363,10 +365,12 @@ class ftp_client():
             except (ValueError, TypeError) as e:
                 log('error', f'Invalid response: {raw_resp}, error: {e}')
             else:
+                log('info', 'Start of list.')
                 for resp in resp_list:
                     info = _parse_stat(resp)
                     if info:
                         _print_info(info)
+                log('info', 'End of list.')
         except socket.error:
             log('info', 'Data connection closed.')
         finally:
