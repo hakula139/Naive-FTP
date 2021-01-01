@@ -483,12 +483,12 @@ class ftp_client():
         expected, _, resp_msg = self.check_resp(250)
         log('info' if expected else 'warn', resp_msg)
 
-    def cwd(self, path: str = '') -> None:
+    def cwd(self, path: str = '/') -> None:
         '''
         Change working directory.
 
         :param path: relative path to the destination,
-                     empty string means root folder
+                     using root folder by default
         '''
 
         if not self.ping():
