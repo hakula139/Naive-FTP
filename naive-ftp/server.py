@@ -186,7 +186,7 @@ class ftp_server(threading.Thread):
                             f'{file_name} {info}\r\n'.encode('utf-8')
                         )
         except OSError as e:
-            log('warn', f'OS error: {e}')
+            log('warn', f'System error: {e}')
             self.send_status(550)
         except socket.timeout:
             log('warn', f'Data connection timeout: {self.data_addr}')
@@ -225,7 +225,7 @@ class ftp_server(threading.Thread):
                         break
                     self.data_conn.sendall(data)
         except OSError as e:
-            log('warn', f'OS error: {e}')
+            log('warn', f'System error: {e}')
             self.send_status(550)
         except socket.timeout:
             log('warn', f'Data connection timeout: {self.data_addr}')
@@ -266,7 +266,7 @@ class ftp_server(threading.Thread):
                         break
                     dst_file.write(data)
         except OSError as e:
-            log('warn', f'OS error: {e}')
+            log('warn', f'System error: {e}')
             self.send_status(550)
         except socket.timeout:
             log('warn', f'Data connection timeout: {self.data_addr}')
