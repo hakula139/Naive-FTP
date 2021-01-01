@@ -178,23 +178,23 @@ class ftp_client():
         _print_cmd('OPEN', '', _read_doc(self.open))
         _print_cmd('QUIT', '', _read_doc(self.close))
         _print_cmd('EXIT', '', _read_doc(self.close))
-        _print_cmd('LIST', '<path>', _read_doc(self.ls))
-        _print_cmd('LS', '<path>', _read_doc(self.ls))
-        _print_cmd('RETR', '<path>', _read_doc(self.retrieve))
-        _print_cmd('GET', '<path>', _read_doc(self.retrieve))
-        _print_cmd('STOR', '<path>', _read_doc(self.store))
-        _print_cmd('PUT', '<path>', _read_doc(self.store))
-        _print_cmd('DELE', '<path>', _read_doc(self.delete))
-        _print_cmd('DEL', '<path>', _read_doc(self.delete))
-        _print_cmd('RM', '<path>', _read_doc(self.delete))
-        _print_cmd('CWD', '<path>', _read_doc(self.cwd))
-        _print_cmd('CD', '<path>', _read_doc(self.cwd))
+        _print_cmd('LIST', '<server_path>', _read_doc(self.ls))
+        _print_cmd('LS', '<server_path>', _read_doc(self.ls))
+        _print_cmd('RETR', '<server_path>', _read_doc(self.retrieve))
+        _print_cmd('GET', '<server_path>', _read_doc(self.retrieve))
+        _print_cmd('STOR', '<local_path>', _read_doc(self.store))
+        _print_cmd('PUT', '<local_path>', _read_doc(self.store))
+        _print_cmd('DELE', '<server_path>', _read_doc(self.delete))
+        _print_cmd('DEL', '<server_path>', _read_doc(self.delete))
+        _print_cmd('RM', '<server_path>', _read_doc(self.delete))
+        _print_cmd('CWD', '<server_path>', _read_doc(self.cwd))
+        _print_cmd('CD', '<server_path>', _read_doc(self.cwd))
         _print_cmd('PWD', '', _read_doc(self.pwd))
-        _print_cmd('MKD', '<path>', _read_doc(self.mkdir))
-        _print_cmd('MKDI', '<path>', _read_doc(self.mkdir))
-        _print_cmd('RMD', '<path>', _read_doc(self.rmdir))
-        _print_cmd('RMDI', '<path>', _read_doc(self.rmdir))
-        _print_cmd('RMDA', '<path>', _read_doc(self.rmdir_all))
+        _print_cmd('MKD', '<server_path>', _read_doc(self.mkdir))
+        _print_cmd('MKDI', '<server_path>', _read_doc(self.mkdir))
+        _print_cmd('RMD', '<server_path>', _read_doc(self.rmdir))
+        _print_cmd('RMDI', '<server_path>', _read_doc(self.rmdir))
+        _print_cmd('RMDA', '<server_path>', _read_doc(self.rmdir_all))
 
     def open(self) -> None:
         '''
@@ -234,7 +234,7 @@ class ftp_client():
         '''
         List information of a file or directory.
 
-        :param path: relative path to the file or directory,
+        :param path: server path to the file or directory,
                      using current path by default
         '''
 
@@ -384,7 +384,7 @@ class ftp_client():
         '''
         Retrieve a file from server.
 
-        :param path: relative path to the file
+        :param path: server path to the file
         '''
 
         if not self.ping():
@@ -425,7 +425,7 @@ class ftp_client():
         '''
         Store a file to server.
 
-        :param path: relative path to the file
+        :param path: local path to the file
         '''
 
         if not self.ping():
@@ -469,7 +469,7 @@ class ftp_client():
         '''
         Delete a file from server.
 
-        :param path: relative path to the file
+        :param path: server path to the file
         '''
 
         if not self.ping():
@@ -487,7 +487,7 @@ class ftp_client():
         '''
         Change working directory.
 
-        :param path: relative path to the destination,
+        :param path: server path to the destination,
                      using root folder by default
         '''
 
@@ -522,7 +522,7 @@ class ftp_client():
         '''
         Make a directory recursively.
 
-        :param path: relative path to the directory
+        :param path: server path to the directory
         '''
 
         if not self.ping():
@@ -540,7 +540,7 @@ class ftp_client():
         '''
         Remove a directory.
 
-        :param path: relative path to the directory
+        :param path: server path to the directory
         :param recursive: remove recursively if True
         '''
 
@@ -557,7 +557,7 @@ class ftp_client():
         '''
         Remove a directory recursively.
 
-        :param path: relative path to the directory
+        :param path: server path to the directory
         '''
 
         self.rmdir(path, recursive=True)

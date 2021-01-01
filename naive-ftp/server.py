@@ -167,7 +167,7 @@ class ftp_server(Thread):
         '''
         List information of a file or directory.
 
-        :param path: relative path to the file or directory
+        :param path: server path to the file or directory
         '''
 
         def _parse_stat(raw_stat: os.stat_result) -> str:
@@ -241,7 +241,7 @@ class ftp_server(Thread):
         '''
         Retrieve a file from server.
 
-        :param path: relative path to the file
+        :param path: server path to the file
         '''
 
         src_path = os.path.realpath(
@@ -282,11 +282,15 @@ class ftp_server(Thread):
         '''
         Store a file to server.
 
-        :param path: relative path to the file
+        :param path: local path to the file
         '''
 
         dst_path = os.path.realpath(
-            os.path.join(self.server_dir, self.cwd_path, path)
+            os.path.join(
+                self.server_dir,
+                self.cwd_path,
+                os.path.basename(path),
+            )
         )
         log('debug', f'Storing file: {dst_path}')
         if not is_safe_path(dst_path, self.server_dir):
@@ -326,7 +330,7 @@ class ftp_server(Thread):
         '''
         Delete a file from server.
 
-        :param path: relative path to the file
+        :param path: server path to the file
         '''
 
         src_path = os.path.realpath(
@@ -352,7 +356,7 @@ class ftp_server(Thread):
         '''
         Change working directory.
 
-        :param path: relative path to the destination,
+        :param path: server path to the destination,
                      using root folder by default
         '''
 
@@ -386,7 +390,7 @@ class ftp_server(Thread):
 
         Return -1 if failed, otherwise return 0.
 
-        :param path: relative path to the directory
+        :param path: server path to the directory
         :param is_client: True for client, False for server internal use
         '''
 
@@ -418,7 +422,7 @@ class ftp_server(Thread):
         '''
         Remove a directory.
 
-        :param path: relative path to the directory
+        :param path: server path to the directory
         :param recursive: remove recursively if True
         '''
 
@@ -447,7 +451,7 @@ class ftp_server(Thread):
         '''
         Remove a directory recursively.
 
-        :param path: relative path to the directory
+        :param path: server path to the directory
         '''
 
         self.rmdir(path, recursive=True)
