@@ -133,12 +133,23 @@ class ftp_server(Thread):
             self.data_sock = None
             log('info', f'Data socket closed: {self.data_sock_name}')
 
+    def close_ctrl_conn(self) -> None:
+        '''
+        Close control connection.
+        '''
+
+        if self.ctrl_conn:
+            self.ctrl_conn.close()
+            self.ctrl_conn = None
+            log('info', f'Control connection closed: {self.client_addr}')
+
     def close(self) -> None:
         '''
         Close all sockets.
         '''
 
         self.close_data_sock()
+        self.close_ctrl_conn()
 
     def pong(self) -> None:
         '''
@@ -473,22 +484,11 @@ class server_listener(Thread):
         self.ctrl_sock_name = s.getsockname()
         log('info', f'Server started, listening at {self.ctrl_sock_name}')
 
-    def close_ctrl_conn(self) -> None:
-        '''
-        Close control connection.
-        '''
-
-        if self.ctrl_conn:
-            self.ctrl_conn.close()
-            self.ctrl_conn = None
-            log('info', f'Control connection closed: {self.client_addr}')
-
     def close_ctrl_sock(self) -> None:
         '''
         Close control socket.
         '''
 
-        self.close_ctrl_conn()
         if self.ctrl_sock:
             self.ctrl_sock.close()
             self.ctrl_sock = None
@@ -513,7 +513,7 @@ class server_listener(Thread):
                 server = ftp_server(self.ctrl_conn, self.client_addr)
                 server.start()
         except (socket.timeout, socket.error):
-            self.close_ctrl_conn()
+            self.close()
 
 
 def main() -> None:
