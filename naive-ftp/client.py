@@ -236,13 +236,29 @@ class ftp_client():
 
         def _parse_stat(resp: str) -> Tuple[str, str, str, str, str, str]:
             '''
-            Parse the raw response to a list for output.
+            Parse a line of server response to a human readable list for output.
 
             Return file name, file size, file type, last modified time,
             permissions and owner.
 
-            :param resp: server response
+            :param resp: a line of response
             '''
+
+            def _parse_size(st_size: int) -> str:
+                '''
+                Interpret st_size to a human readable size.
+
+                Return file size with a proper unit prefix.
+
+                :param st_size: file size
+                '''
+
+                size = float(st_size)
+                for unit in ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB']:
+                    if abs(size) < 1024.0:
+                        return f'{size:4.1f} {unit}'
+                    size /= 1024.0
+                return f'{size:.1f} YB'
 
             def _parse_type(st_mode: int) -> str:
                 '''
@@ -283,11 +299,9 @@ class ftp_client():
                 return perms
 
             try:
-                file_name, st_size, st_mode, st_mtime, st_uid = (
-                    resp.decode('utf-8').strip('\r\n').split(' ')
-                )
+                file_name, st_size, st_mode, st_mtime, st_uid = resp.split(' ')
                 file_name = file_name.replace('%20', ' ')
-                file_size = f'{st_size} B'
+                file_size = _parse_size(int(st_size))
                 file_type = _parse_type(int(st_mode))
                 mod_time = (
                     datetime.fromtimestamp(float(st_mtime))
@@ -300,6 +314,22 @@ class ftp_client():
                 return
             else:
                 return file_name, file_size, file_type, mod_time, perms, owner
+
+        def _print_info(info: Tuple[str, str, str, str, str, str]) -> None:
+            '''
+            Print information of a file or directory.
+
+            :param info: (file_name, file_size, file_type, mod_time, perms, owner)
+            '''
+
+            try:
+                file_name, file_size, file_type, mod_time, perms, owner = info
+                print(
+                    '{:20} | {:>10} | {:4} | {:19} | {:10} | {:3}'
+                    .format(file_name, file_size, file_type, mod_time, perms, owner)
+                )
+            except ValueError as e:
+                log('error', f'Invalid response: {info}, error: {e}')
 
         if not self.ping():
             log('info', 'Please connect to server first.')
@@ -317,14 +347,26 @@ class ftp_client():
             return
 
         try:
+            raw_resp = b''
             while True:
                 data = self.data_conn.recv(self.buffer_size)
                 if not data:
                     break
-                info = _parse_stat(data)
-                if not info:  # invalid response
-                    print('Invalid file information')
-                print('\t'.join(info))
+                raw_resp += data
+            try:
+                resp_list: list[str] = (
+                    raw_resp
+                    .decode('utf-8')
+                    .strip('\r\n')
+                    .split('\r\n')
+                )
+            except (ValueError, TypeError) as e:
+                log('error', f'Invalid response: {raw_resp}, error: {e}')
+            else:
+                for resp in resp_list:
+                    info = _parse_stat(resp)
+                    if info:
+                        _print_info(info)
         except socket.error:
             log('info', 'Data connection closed.')
         finally:
@@ -363,7 +405,7 @@ class ftp_client():
                         break
                     dst_file.write(data)
         except OSError as e:
-            log('warn', f'OS error: {e}')
+            log('warn', f'System error: {e}')
         except socket.error:
             log('info', 'Data connection closed.')
         else:
@@ -407,7 +449,7 @@ class ftp_client():
                         break
                     self.data_conn.sendall(data)
         except OSError as e:
-            log('warn', f'OS error: {e}')
+            log('warn', f'System error: {e}')
         except socket.error:
             log('info', 'Data connection closed.')
         else:
