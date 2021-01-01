@@ -392,23 +392,32 @@ class ftp_server(Thread):
         :param raw_cmd: raw client command
         '''
 
+        method_dict = {
+            'PING': self.pong,
+            'LIST': self.ls,
+            'RETR': self.retrieve,
+            'STOR': self.store,
+            'DELE': self.delete,
+            'CWD': self.cwd,
+            'PWD': self.pwd,
+            'MKD': self.mkdir,
+            'RMD': self.rmdir,
+            'RMDA': self.rmdir_all,
+        }
+
         try:
             cmd = raw_cmd.split(None, 1)
+            cmd_len = len(cmd)
             op = cmd[0]
-            path = cmd[1] if len(cmd) == 2 else None
-            method_dict = {
-                'PING': self.pong,
-                'LIST': self.ls,
-                'RETR': self.retrieve,
-                'STOR': self.store,
-                'DELE': self.delete,
-                'MKD': self.mkdir,
-                'RMD': self.rmdir,
-                'RMDA': self.rmdir_all,
-            }
             method = method_dict.get(op[:4].upper())
-            method(path) if path else method()
-        except Exception as e:
+            if method:
+                if cmd_len == 1:
+                    method()
+                else:
+                    method(cmd[1])
+            else:
+                log('warn', f'Invalid client operation: {raw_cmd}')
+        except TypeError as e:
             log('warn', f'Invalid client operation: {raw_cmd}, error: {e}')
             self.send_status(501)
 
