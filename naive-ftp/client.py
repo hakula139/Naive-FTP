@@ -527,33 +527,37 @@ class ftp_client():
         :param raw_cmd: raw user command
         '''
 
+        method_dict = {
+            'HELP': self.help,
+            'OPEN': self.open,
+            'QUIT': self.close,
+            'EXIT': self.close,         # alias
+            'LIST': self.ls,
+            'LS': self.ls,              # alias
+            'RETR': self.retrieve,
+            'GET': self.retrieve,       # alias
+            'STOR': self.store,
+            'PUT': self.store,          # alias
+            'DELE': self.delete,
+            'DEL': self.delete,         # alias
+            'RM': self.delete,          # alias
+            'MKD': self.mkdir,
+            'MKDI': self.mkdir,         # alias
+            'RMD': self.rmdir,
+            'RMDI': self.rmdir,         # alias
+            'RMDA': self.rmdir_all,
+        }
+
         try:
             cmd = raw_cmd.split(None, 1)
+            cmd_len = len(cmd)
             op = cmd[0]
-            path = cmd[1] if len(cmd) == 2 else None
-            method_dict = {
-                'HELP': self.help,
-                'OPEN': self.open,
-                'QUIT': self.close,
-                'EXIT': self.close,         # alias
-                'LIST': self.ls,
-                'LS': self.ls,              # alias
-                'RETR': self.retrieve,
-                'GET': self.retrieve,       # alias
-                'STOR': self.store,
-                'PUT': self.store,          # alias
-                'DELE': self.delete,
-                'DEL': self.delete,         # alias
-                'RM': self.delete,          # alias
-                'MKD': self.mkdir,
-                'MKDI': self.mkdir,         # alias
-                'RMD': self.rmdir,
-                'RMDI': self.rmdir,         # alias
-                'RMDA': self.rmdir_all,
-            }
             method = method_dict.get(op[:4].upper())
             if method:
-                method(path) if path else method()
+                if cmd_len == 1:
+                    method()
+                else:
+                    method(cmd[1])
             else:
                 log('info', f'Invalid operation: {raw_cmd}')
         except TypeError as e:
