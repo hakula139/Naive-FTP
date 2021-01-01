@@ -55,19 +55,19 @@ class ftp_client():
         try:
             resp = _get_resp()
         except socket.timeout:
-            log('info', f'No response received, should be: {code}')
+            log('debug', f'No response received, should be: {code}')
             return False, 0, None
         except socket.error as e:
-            log('info', f'Remote connection closed: {e}, should be: {code}')
+            log('debug', f'Remote connection closed: {e}, should be: {code}')
             self.close_ctrl_conn()
             return False, 0, None
 
         try:
-            resp_code, _ = resp.split(None, 1)
+            resp_code, resp_msg = resp.split(None, 1)
             if resp_code != str(code):
                 log('debug', f'Response: {resp_code}, should be: {code}')
-                return False, resp_code, resp
-            return True, resp_code, resp
+                return False, resp_code, resp_msg
+            return True, resp_code, resp_msg
         except ValueError as e:
             log('error', f'Invalid response: {resp}')
             self.close_ctrl_conn()
@@ -82,16 +82,16 @@ class ftp_client():
         self.data_conn.settimeout(self.data_timeout_duration)
 
         # Gets data_addr
-        expected, _, resp = self.check_resp(227)
+        expected, _, resp_msg = self.check_resp(227)
         if not expected:  # not under passive mode
             self.close_data_conn()
             return
         addr = re.search(
             r'(\d+),(\d+),(\d+),(\d+),(\d+),(\d+)',
-            resp,
+            resp_msg,
         )
         if not addr:  # invalid response
-            log('error', f'Invalid response: {resp}')
+            log('error', f'Invalid response: {resp_msg}')
             self.close_data_conn()
             return
         self.data_addr = (
@@ -103,7 +103,7 @@ class ftp_client():
             log('error', f'Data connection failed, error: {err}')
             self.close_data_conn()
         else:
-            log('info', f'Data connection opened: {self.data_addr}')
+            log('debug', f'Data connection opened: {self.data_addr}')
 
     def close_data_conn(self) -> None:
         '''
@@ -146,7 +146,7 @@ class ftp_client():
         if self.ctrl_conn:
             self.ctrl_conn.close()
             self.ctrl_conn = None
-            log('info', 'Connection closed.')
+            log('debug', 'Connection closed.')
 
     def help(self) -> None:
         '''
@@ -187,6 +187,9 @@ class ftp_client():
         _print_cmd('DELE', '<path>', _read_doc(self.delete))
         _print_cmd('DEL', '<path>', _read_doc(self.delete))
         _print_cmd('RM', '<path>', _read_doc(self.delete))
+        _print_cmd('CWD', '<path>', _read_doc(self.cwd))
+        _print_cmd('CD', '<path>', _read_doc(self.cwd))
+        _print_cmd('PWD', '', _read_doc(self.pwd))
         _print_cmd('MKD', '<path>', _read_doc(self.mkdir))
         _print_cmd('MKDI', '<path>', _read_doc(self.mkdir))
         _print_cmd('RMD', '<path>', _read_doc(self.rmdir))
@@ -227,11 +230,12 @@ class ftp_client():
         else:
             return True
 
-    def ls(self, path: str) -> None:
+    def ls(self, path: str = '.') -> None:
         '''
         List information of a file or directory.
 
-        :param path: relative path to the file or directory
+        :param path: relative path to the file or directory,
+                     using current path by default
         '''
 
         def _parse_stat(resp: str) -> Tuple[str, str, str, str, str, str]:
@@ -339,9 +343,9 @@ class ftp_client():
 
         self.ctrl_conn.sendall(f'LIST {path}\r\n'.encode('utf-8'))
 
-        expected, _, resp = self.check_resp(150)
+        expected, _, resp_msg = self.check_resp(150)
         if not expected:
-            log('warn', resp)
+            log('warn', resp_msg)
             return
         self.open_data_conn()
         if not self.check_resp(225)[0]:
@@ -372,7 +376,7 @@ class ftp_client():
                         _print_info(info)
                 log('info', 'End of list.')
         except socket.error:
-            log('info', 'Data connection closed.')
+            log('debug', 'Data connection closed.')
         finally:
             self.close_data_conn()
 
@@ -392,9 +396,9 @@ class ftp_client():
 
         self.ctrl_conn.sendall(f'RETR {path}\r\n'.encode('utf-8'))
 
-        expected, _, resp = self.check_resp(150)
+        expected, _, resp_msg = self.check_resp(150)
         if not expected:
-            log('warn', resp)
+            log('warn', resp_msg)
             return
         self.open_data_conn()
         if not self.check_resp(225)[0]:
@@ -411,7 +415,7 @@ class ftp_client():
         except OSError as e:
             log('warn', f'System error: {e}')
         except socket.error:
-            log('info', 'Data connection closed.')
+            log('debug', 'Data connection closed.')
         else:
             log('info', 'File successfully downloaded.')
         finally:
@@ -436,9 +440,9 @@ class ftp_client():
 
         self.ctrl_conn.sendall(f'STOR {path}\r\n'.encode('utf-8'))
 
-        expected, _, resp = self.check_resp(150)
+        expected, _, resp_msg = self.check_resp(150)
         if not expected:
-            log('info', resp)
+            log('info', resp_msg)
             return
         self.open_data_conn()
         if not self.check_resp(225)[0]:
@@ -455,7 +459,7 @@ class ftp_client():
         except OSError as e:
             log('warn', f'System error: {e}')
         except socket.error:
-            log('info', 'Data connection closed.')
+            log('debug', 'Data connection closed.')
         else:
             log('info', 'File successfully uploaded.')
         finally:
@@ -476,8 +480,43 @@ class ftp_client():
 
         self.ctrl_conn.sendall(f'DELE {path}\r\n'.encode('utf-8'))
 
-        expected, _, resp = self.check_resp(250)
-        log('info' if expected else 'warn', resp)
+        expected, _, resp_msg = self.check_resp(250)
+        log('info' if expected else 'warn', resp_msg)
+
+    def cwd(self, path: str = '') -> None:
+        '''
+        Change working directory.
+
+        :param path: relative path to the destination,
+                     empty string means root folder
+        '''
+
+        if not self.ping():
+            log('info', 'Please connect to server first.')
+            return
+
+        self.ctrl_conn.sendall(f'CWD {path}\r\n'.encode('utf-8'))
+        expected, _, resp_msg = self.check_resp(257)
+        if not expected:
+            log('warn', resp_msg)
+        else:
+            log('info', f'Changed to directory: {resp_msg}')
+
+    def pwd(self) -> None:
+        '''
+        Print working directory.
+        '''
+
+        if not self.ping():
+            log('info', 'Please connect to server first.')
+            return
+
+        self.ctrl_conn.sendall(f'PWD\r\n'.encode('utf-8'))
+        expected, _, resp_msg = self.check_resp(257)
+        if not expected:
+            log('warn', resp_msg)
+        else:
+            print(resp_msg)
 
     def mkdir(self, path: str) -> None:
         '''
@@ -491,8 +530,11 @@ class ftp_client():
             return
 
         self.ctrl_conn.sendall(f'MKD {path}\r\n'.encode('utf-8'))
-        expected, _, resp = self.check_resp(250)
-        log('info' if expected else 'warn', resp)
+        expected, _, resp_msg = self.check_resp(257)
+        if not expected:
+            log('warn', resp_msg)
+        else:
+            log('info', f'Created directory: {resp_msg}')
 
     def rmdir(self, path: str, recursive: bool = False) -> None:
         '''
@@ -508,8 +550,8 @@ class ftp_client():
 
         op = 'RMDA' if recursive else 'RMD'
         self.ctrl_conn.sendall(f'{op} {path}\r\n'.encode('utf-8'))
-        expected, _, resp = self.check_resp(250)
-        log('info' if expected else 'warn', resp)
+        expected, _, resp_msg = self.check_resp(250)
+        log('info' if expected else 'warn', resp_msg)
 
     def rmdir_all(self, path: str) -> None:
         '''
@@ -541,6 +583,9 @@ class ftp_client():
             'DELE': self.delete,
             'DEL': self.delete,         # alias
             'RM': self.delete,          # alias
+            'CWD': self.cwd,
+            'CD': self.cwd,             # alias
+            'PWD': self.pwd,
             'MKD': self.mkdir,
             'MKDI': self.mkdir,         # alias
             'RMD': self.rmdir,
@@ -574,10 +619,10 @@ class ftp_client():
                 if raw_cmd:
                     self.router(raw_cmd)
             except socket.timeout:
-                log('info', f'Connection timeout.')
+                log('debug', f'Connection timeout.')
                 self.close_ctrl_conn()
             except socket.error:
-                log('info', f'Remote connection closed.')
+                log('debug', f'Remote connection closed.')
                 self.close_ctrl_conn()
             except KeyboardInterrupt:
                 print('\nInterrupted.')

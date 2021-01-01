@@ -2,7 +2,7 @@ import shutil
 import socket
 import os
 from threading import Thread
-from typing import Tuple, get_args
+from typing import Tuple
 from utils import log, is_safe_path
 
 # Control socket
@@ -28,6 +28,9 @@ class ftp_server(Thread):
         self.max_allowed_conn: int = 5
         self.server_dir: str = os.path.realpath('server_files')
 
+        # Current working directory
+        self.cwd_path: str = '.'
+
         # Control connection
         self.ctrl_conn: socket.socket = ctrl_conn
         self.client_addr: Tuple[str, int] = client_addr
@@ -38,11 +41,12 @@ class ftp_server(Thread):
         self.data_conn: socket.socket = None
         self.data_addr: Tuple[str, int] = None
 
-    def send_status(self, status_code: int) -> None:
+    def send_status(self, status_code: int, *args) -> None:
         '''
         Send a response based on status code.
 
         :param status_code: status code
+        :param *args: optional arguments
         '''
 
         def _parsed_addr(addr: Tuple[str, int]) -> str:
@@ -71,6 +75,7 @@ class ftp_server(Thread):
             226: '226 Closing data connection. Requested file action successful.\r\n',
             227: '227 Entering Passive Mode {}.\r\n'.format(_parsed_addr(self.data_sock_name)),
             250: '250 Requested file action okay, completed.\r\n',
+            257: '257 {}\r\n'.format(args[0] if len(args) else None),
             450: '450 Requested file action not taken.\r\n',
             501: '501 Syntax error in parameters or arguments.\r\n',
             550: '550 Requested action not taken. File unavailable.\r\n',
@@ -120,7 +125,7 @@ class ftp_server(Thread):
         if self.data_conn:
             self.data_conn.close()
             self.data_conn = None
-            log('info', f'Data connection closed: {self.data_addr}')
+            log('debug', f'Data connection closed: {self.data_addr}')
 
     def close_data_sock(self) -> None:
         '''
@@ -131,7 +136,7 @@ class ftp_server(Thread):
         if self.data_sock:
             self.data_sock.close()
             self.data_sock = None
-            log('info', f'Data socket closed: {self.data_sock_name}')
+            log('debug', f'Data socket closed: {self.data_sock_name}')
 
     def close_ctrl_conn(self) -> None:
         '''
@@ -141,7 +146,7 @@ class ftp_server(Thread):
         if self.ctrl_conn:
             self.ctrl_conn.close()
             self.ctrl_conn = None
-            log('info', f'Control connection closed: {self.client_addr}')
+            log('debug', f'Control connection closed: {self.client_addr}')
 
     def close(self) -> None:
         '''
@@ -181,8 +186,20 @@ class ftp_server(Thread):
             s.append(raw_stat.st_uid)    # owner id
             return ' '.join([str(i) for i in s])
 
-        src_path = os.path.realpath(os.path.join(self.server_dir, path))
-        log('info', f'Listing information of: {src_path}')
+        def _send_info(file_name: str, info: str) -> None:
+            '''
+            Send file information to client.
+
+            :param file_name: file name
+            :param info: file information
+            '''
+
+            self.data_conn.sendall(f'{file_name} {info}\r\n'.encode('utf-8'))
+
+        src_path = os.path.realpath(
+            os.path.join(self.server_dir, self.cwd_path, path)
+        )
+        log('debug', f'Listing information of {src_path}')
         if not is_safe_path(src_path, self.server_dir, allow_base=True):
             self.send_status(553)
             return
@@ -195,15 +212,20 @@ class ftp_server(Thread):
             if not self.data_sock:
                 self.open_data_sock()
             self.open_data_conn()
-            log('info', 'Sending list.')
-            with os.scandir(src_path) as it:
-                for file in it:
-                    if not file.name.startswith('.'):
-                        file_name = file.name.replace(' ', '%20')
-                        info = _parse_stat(file.stat())
-                        self.data_conn.sendall(
-                            f'{file_name} {info}\r\n'.encode('utf-8')
-                        )
+            if os.path.isdir(src_path):
+                with os.scandir(src_path) as it:
+                    for file in it:
+                        if not file.name.startswith('.'):
+                            file_name = file.name.replace(' ', '%20')
+                            info = _parse_stat(file.stat())
+                            _send_info(file_name, info)
+            else:
+                file_name = os.path.basename(src_path)
+                if not file_name.startswith('.'):
+                    file_name = file_name.replace(' ', '%20')
+                    info = _parse_stat(os.stat(src_path))
+                    _send_info(file_name, info)
+            log('info', f'Finished listing information of {src_path}')
         except OSError as e:
             log('warn', f'System error: {e}')
             self.send_status(550)
@@ -222,8 +244,10 @@ class ftp_server(Thread):
         :param path: relative path to the file
         '''
 
-        src_path = os.path.realpath(os.path.join(self.server_dir, path))
-        log('info', f'Retrieving file: {src_path}')
+        src_path = os.path.realpath(
+            os.path.join(self.server_dir, self.cwd_path, path)
+        )
+        log('debug', f'Sending file: {src_path}')
         if not is_safe_path(src_path, self.server_dir):
             self.send_status(553)
             return
@@ -237,12 +261,12 @@ class ftp_server(Thread):
                 if not self.data_sock:
                     self.open_data_sock()
                 self.open_data_conn()
-                log('info', 'Sending file.')
                 while True:
                     data = src_file.read(self.buffer_size)
                     if not data:
                         break
                     self.data_conn.sendall(data)
+            log('info', f'Sent file {src_path}')
         except OSError as e:
             log('warn', f'System error: {e}')
             self.send_status(550)
@@ -261,8 +285,10 @@ class ftp_server(Thread):
         :param path: relative path to the file
         '''
 
-        dst_path = os.path.realpath(os.path.join(self.server_dir, path))
-        log('info', f'Storing file: {dst_path}')
+        dst_path = os.path.realpath(
+            os.path.join(self.server_dir, self.cwd_path, path)
+        )
+        log('debug', f'Storing file: {dst_path}')
         if not is_safe_path(dst_path, self.server_dir):
             self.send_status(553)
             return
@@ -284,6 +310,7 @@ class ftp_server(Thread):
                     if not data:
                         break
                     dst_file.write(data)
+            log('info', f'Stored file: {dst_path}')
         except OSError as e:
             log('warn', f'System error: {e}')
             self.send_status(550)
@@ -302,8 +329,10 @@ class ftp_server(Thread):
         :param path: relative path to the file
         '''
 
-        src_path = os.path.realpath(os.path.join(self.server_dir, path))
-        log('info', f'Deleting file: {src_path}')
+        src_path = os.path.realpath(
+            os.path.join(self.server_dir, self.cwd_path, path)
+        )
+        log('debug', f'Deleting file: {src_path}')
         if not is_safe_path(src_path, self.server_dir):
             self.send_status(553)
             return
@@ -313,10 +342,43 @@ class ftp_server(Thread):
 
         try:
             os.remove(src_path)
+            log('info', f'Deleted file: {src_path}')
             self.send_status(250)
         except OSError:
             log('warn', f'Failed to delete file: {src_path}')
             self.send_status(550)
+
+    def cwd(self, path: str = '/') -> None:
+        '''
+        Change working directory.
+
+        :param path: relative path to the destination,
+                     using root folder by default
+        '''
+
+        dst_path = os.path.realpath(
+            os.path.join(self.server_dir, self.cwd_path, path)
+        ) if path != '/' else self.server_dir
+        log('debug', f'Changing working directory to {dst_path}')
+        if not is_safe_path(dst_path, self.server_dir, allow_base=True):
+            self.send_status(553)
+            return
+
+        if os.path.isdir(dst_path):
+            self.cwd_path = dst_path[len(self.server_dir)+1:]
+            if not self.cwd_path:
+                self.cwd_path = '.'
+            log('info', f'Changed working directory to {self.cwd_path}')
+            self.send_status(257, self.cwd_path)
+        else:
+            self.send_status(550)
+
+    def pwd(self) -> None:
+        '''
+        Print working directory.
+        '''
+
+        self.send_status(257, self.cwd_path)
 
     def mkdir(self, path: str, is_client: bool = True) -> int:
         '''
@@ -329,9 +391,9 @@ class ftp_server(Thread):
         '''
 
         dst_path = os.path.realpath(
-            os.path.join(self.server_dir, path)
+            os.path.join(self.server_dir, self.cwd_path, path)
         ) if is_client else path
-        log('info', f'Creating directory: {dst_path}')
+        log('debug', f'Creating directory: {dst_path}')
         if not is_safe_path(dst_path, self.server_dir):
             self.send_status(553)
             return
@@ -339,8 +401,10 @@ class ftp_server(Thread):
             if not os.path.exists(dst_path):
                 os.makedirs(dst_path)
             if os.path.isdir(dst_path):
+                log('info', f'Created directory: {dst_path}')
                 if is_client:
-                    self.send_status(250)
+                    dir_path = dst_path.strip(self.server_dir)
+                    self.send_status(257, dir_path)
             else:
                 raise OSError
         except OSError:
@@ -358,8 +422,10 @@ class ftp_server(Thread):
         :param recursive: remove recursively if True
         '''
 
-        src_path = os.path.realpath(os.path.join(self.server_dir, path))
-        log('info', f'Removing directory: {src_path}')
+        src_path = os.path.realpath(
+            os.path.join(self.server_dir, self.cwd_path, path)
+        )
+        log('debug', f'Removing directory: {src_path}')
         if not is_safe_path(src_path, self.server_dir):
             self.send_status(553)
             return
@@ -369,6 +435,7 @@ class ftp_server(Thread):
                     shutil.rmtree(src_path)
                 else:
                     os.rmdir(src_path)
+                log('info', f'Removed directory: {src_path}')
                 self.send_status(250)
             else:
                 raise OSError
@@ -406,6 +473,7 @@ class ftp_server(Thread):
         }
 
         try:
+            log('debug', f'Operation: {raw_cmd}')
             cmd = raw_cmd.split(None, 1)
             cmd_len = len(cmd)
             op = cmd[0]
@@ -439,7 +507,6 @@ class ftp_server(Thread):
                 )
                 if not raw_cmd:  # connection closed
                     break
-                log('debug', f'Operation: {raw_cmd}')
                 self.router(raw_cmd)
         except (socket.timeout, socket.error):
             pass
