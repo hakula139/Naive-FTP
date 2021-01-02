@@ -12,7 +12,7 @@ A simple FTP server and client, written in Python, using pure `socket` module.
     - [2. Usage](#2-usage)
       - [2.1 server](#21-server)
       - [2.2 client CLI](#22-client-cli)
-  - [TODO](#todo)
+  - [TODOs](#todos)
   - [Contributors](#contributors)
   - [License](#license)
 
@@ -68,16 +68,16 @@ Press `q` to exit.
 Start the Naive-FTP client CLI using the command below, and it will try to connect to `localhost:2121` by default.
 
 ```bash
-python naive_ftp/client/client.py
+python ./naive_ftp/client/client.py
 ```
 
 To get started, use the command `help` to show all available commands.
 
-```bash
+```text
 > help
 ```
 
-## TODO
+## TODOs
 
 - [ ] Implement a GUI using Flask and Vue.js
 
