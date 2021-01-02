@@ -8,7 +8,6 @@ module.exports = {
     'eslint:recommended',
     '@vue/typescript/recommended',
     '@vue/prettier',
-    '@vue/prettier/@typescript-eslint',
   ],
   parserOptions: {
     ecmaVersion: 2020,
@@ -19,12 +18,12 @@ module.exports = {
     'prettier/prettier': [
       'warn',
       {
-        'trailingComma': 'all',
-        'tabWidth': 2,
-        'semi': true,
-        'singleQuote': true,
-        'arrowParens': 'always',
-      }
-    ]
-  }
-}
+        trailingComma: 'es5',
+        tabWidth: 2,
+        semi: true,
+        singleQuote: true,
+        arrowParens: 'always',
+      },
+    ],
+  },
+};

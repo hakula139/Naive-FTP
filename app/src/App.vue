@@ -5,11 +5,11 @@
 </template>
 
 <style lang="scss">
-#app {
+body {
   font-family: Roboto, Noto, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #202020;
+  background-color: #202020;
+  color: #fff;
 }
 </style>
