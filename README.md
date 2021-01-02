@@ -9,9 +9,11 @@ A simple FTP server and client, written in Python, using pure `socket` module.
   - [Getting Started](#getting-started)
     - [0. Prerequisities](#0-prerequisities)
     - [1. Installation](#1-installation)
+      - [1.1 GUI support](#11-gui-support)
     - [2. Usage](#2-usage)
       - [2.1 server](#21-server)
       - [2.2 client CLI](#22-client-cli)
+      - [2.3 client GUI](#23-client-gui)
   - [TODOs](#todos)
   - [Contributors](#contributors)
   - [License](#license)
@@ -23,6 +25,8 @@ A simple FTP server and client, written in Python, using pure `socket` module.
 To set up the environment, you need to have the following dependencies installed.
 
 - [Python](https://www.python.org/downloads) 3.7 or later
+- [Node.js](https://nodejs.org/en/download) 14 or later (for GUI)
+- [Yarn](https://classic.yarnpkg.com/en/docs/install) (for GUI)
 
 ### 1. Installation
 
@@ -45,6 +49,14 @@ Then you can build the project using `setup.py`.
 python setup.py install --user
 ```
 
+#### 1.1 GUI support
+
+If you prefer to use a GUI for client, use the following command to set up the GUI.
+
+```bash
+cd app && yarn && yarn build
+```
+
 ### 2. Usage
 
 #### 2.1 server
@@ -65,7 +77,7 @@ Press `q` to exit.
 
 #### 2.2 client CLI
 
-Start the Naive-FTP client CLI using the command below, and it will try to connect to `localhost:2121` by default.
+Start the Naive-FTP client CLI using the command below. The client will try to connect to `localhost:2121` by default.
 
 ```bash
 python ./naive_ftp/client/client.py
@@ -77,9 +89,19 @@ To get started, use the command `help` to show all available commands.
 > help
 ```
 
+#### 2.3 client GUI
+
+Start the Naive-FTP client GUI using the command below.
+
+```bash
+yarn build
+```
+
 ## TODOs
 
 - [ ] Implement a GUI using Flask and Vue.js
+  - [ ] Set up Vue.js
+  - [ ] Set up Flask
 
 ## Contributors
 
