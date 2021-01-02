@@ -5,7 +5,7 @@ import re
 import stat
 from datetime import datetime
 from typing import Callable, Tuple
-from utils import log
+from naive_ftp.utils import log
 
 server_host: str = socket.gethostname()
 server_port: int = 2121
@@ -162,7 +162,7 @@ class ftp_client():
             :param descr: the description of the command
             '''
 
-            print(f'   {cmd:4} {usage:10} {descr}')
+            print(f'   {cmd:4} {usage:15} {descr}')
 
         def _read_doc(method: Callable) -> str:
             '''

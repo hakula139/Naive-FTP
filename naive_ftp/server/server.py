@@ -3,7 +3,7 @@ import socket
 import os
 from threading import Thread
 from typing import Tuple
-from utils import log, is_safe_path
+from naive_ftp.utils import log, is_safe_path
 
 # Control socket
 listen_host: str = socket.gethostname()
