@@ -249,6 +249,5 @@ dist
 
 # Customized
 
-.vscode
-local_files
-server_files
+local_files/
+server_files/
