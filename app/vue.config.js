@@ -4,13 +4,11 @@ module.exports = {
       less: {
         lessOptions: {
           modifyVars: {
-            'primary-color': '#3030FF',
-            'link-color': '#FF6600',
-            'border-radius-base': '4px',
+            'primary-color': '#eb2f96',
           },
           javascriptEnabled: true,
         },
       },
     },
   },
-}
+};

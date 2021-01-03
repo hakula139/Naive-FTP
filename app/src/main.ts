@@ -4,13 +4,13 @@ import App from './App.vue';
 import './registerServiceWorker';
 import router from './router';
 
-import { Button } from 'ant-design-vue';
+import { Breadcrumb, Layout } from 'ant-design-vue';
 
 const app = createApp(App);
 
 app.use(router);
 
 // Ant Design
-app.use(Button);
+app.use(Breadcrumb).use(Layout);
 
 app.mount('#app');

@@ -1,9 +1,25 @@
 import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router';
 
-const Main = () => import(/* webpackChunkName: "main" */ '@/views/Main.vue');
+const Layout = () =>
+  import(/* webpackChunkName: "layout" */ '@/views/Layout.vue');
+const NotFound = () =>
+  import(/* webpackChunkName: "not-found" */ '@/views/NotFound.vue');
 
 const routes: Array<RouteRecordRaw> = [
-  { path: '/', name: 'Main', component: Main },
+  {
+    path: '/files/:pathMatch(.*)*',
+    name: 'Layout',
+    component: Layout,
+  },
+  {
+    path: '/404',
+    name: 'NotFound',
+    component: NotFound,
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    redirect: (to) => `/files${to.path}`,
+  },
 ];
 
 const router = createRouter({
