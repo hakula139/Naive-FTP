@@ -7,7 +7,7 @@ module.exports = {
     'plugin:vue/vue3-essential',
     'eslint:recommended',
     '@vue/typescript/recommended',
-    '@vue/prettier',
+    '@vue/prettier/recommended',
   ],
   parserOptions: {
     ecmaVersion: 2020,
@@ -15,15 +15,5 @@ module.exports = {
   rules: {
     'no-console': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
     'no-debugger': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
-    'prettier/prettier': [
-      'warn',
-      {
-        trailingComma: 'es5',
-        tabWidth: 2,
-        semi: true,
-        singleQuote: true,
-        arrowParens: 'always',
-      },
-    ],
   },
 };
