@@ -5,7 +5,9 @@
     :row-selection="rowSelection"
     :scroll="scroll"
   >
-    <template #name="{ text }"> {{ text.first }} {{ text.last }} </template>
+    <template #name="{ text }">
+      {{ text.first }} {{ text.last }}
+    </template>
   </a-table>
 </template>
 

@@ -1,7 +1,10 @@
 <template>
   <a-layout id="layout">
     <a-layout-header id="layout-header">
-      <router-link :to="{ name: 'Layout' }" class="title">
+      <router-link
+        :to="{ name: 'Layout' }"
+        class="title"
+      >
         {{ title }}
       </router-link>
     </a-layout-header>
@@ -24,7 +27,12 @@
     </a-layout-content>
     <a-layout-footer id="layout-footer">
       {{ title }} created by
-      <a :href="links.blog" target="_blank">{{ author }}</a>
+      <a
+        :href="links.blog"
+        target="_blank"
+      >
+        {{ author }}
+      </a>
     </a-layout-footer>
   </a-layout>
 </template>
