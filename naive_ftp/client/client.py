@@ -309,6 +309,8 @@ class ftp_client():
                 file_name = file_name.replace('%20', ' ')
                 file_size = _parse_size(int(st_size))
                 file_type = _parse_type(int(st_mode))
+                if file_type == 'Dir':
+                    file_size = ''
                 mod_time = (
                     datetime.fromtimestamp(float(st_mtime))
                     .strftime('%Y-%m-%d %H:%M:%S')
