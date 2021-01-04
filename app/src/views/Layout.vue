@@ -6,16 +6,21 @@
       </router-link>
     </a-layout-header>
     <a-layout-content id="layout-content">
-      <a-breadcrumb :routes="routes">
-        <template #separator>
-          <RightOutlined />
-        </template>
-        <template #itemRender="{ route }">
-          <router-link :to="route.path">
-            {{ route.breadcrumbName }}
-          </router-link>
-        </template>
-      </a-breadcrumb>
+      <div class="path-crumb">
+        <a-breadcrumb :routes="routes">
+          <template #separator>
+            <span class="path-separator">
+              <RightOutlined />
+            </span>
+          </template>
+          <template #itemRender="{ route }">
+            <router-link :to="route.path">
+              {{ route.breadcrumbName }}
+            </router-link>
+          </template>
+        </a-breadcrumb>
+      </div>
+      <file-list :data="fileList" />
     </a-layout-content>
     <a-layout-footer id="layout-footer">
       {{ title }} created by
@@ -30,9 +35,14 @@ import { defineComponent } from 'vue';
 import { Route } from 'ant-design-vue/lib/breadcrumb/Breadcrumb';
 import { RightOutlined } from '@ant-design/icons-vue';
 
+import { FileList } from '@/components';
+import { FileType } from '@/components/types';
+import { fileClient } from '@/apis/mocks';
+
 export default defineComponent({
   components: {
     RightOutlined,
+    FileList,
   },
   data() {
     return {
@@ -42,13 +52,13 @@ export default defineComponent({
         blog: 'https://hakula.xyz',
         repo: 'https://github.com/hakula139/Naive-FTP',
       },
+      fileList: [] as FileType[],
     };
   },
   computed: {
     routes() {
-      const parts: string[] = this.$route.path.split('/');
-      if (parts[0] === '') parts.shift();
-      if (parts[parts.length - 1] === '') parts.pop();
+      const re = /^\/?|\/?$/;
+      const parts: string[] = this.$route.path.replace(re, '').split('/');
       const breadcrumbs: Route[] = [];
       parts.forEach((part, i) => {
         const parentPath = i ? breadcrumbs[i - 1].path : '/';
@@ -58,6 +68,23 @@ export default defineComponent({
         });
       });
       return breadcrumbs;
+    },
+  },
+  created() {
+    this.fetchData();
+  },
+  methods: {
+    async fetchData() {
+      const re = /^\/?files\/?/;
+      const path: string = this.$route.path.replace(re, '');
+      fileClient
+        .getFileList({ path })
+        .then((resp) => {
+          this.fileList = resp.data;
+        })
+        .catch(() => {
+          this.$router.push('NotFound');
+        });
     },
   },
 });
@@ -86,20 +113,20 @@ export default defineComponent({
 #layout-content {
   margin-top: 64px;
   padding: 20px 50px;
-}
 
-.ant-breadcrumb {
-  a {
-    font-size: 20px;
-    line-height: 28px;
-  }
+  .path-crumb {
+    a {
+      font-size: 20px;
+      line-height: 28px;
+    }
 
-  > span:last-child a {
-    font-weight: 700;
-  }
+    > span:last-child a {
+      font-weight: 700;
+    }
 
-  .anticon {
-    margin: 0 4px;
+    .path-separator {
+      margin: 0 4px;
+    }
   }
 }
 
