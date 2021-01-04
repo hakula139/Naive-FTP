@@ -9,20 +9,18 @@
       </router-link>
     </a-layout-header>
     <a-layout-content id="layout-content">
-      <div class="path-crumb">
-        <a-breadcrumb :routes="routes">
-          <template #separator>
-            <span class="path-separator">
-              <RightOutlined />
-            </span>
-          </template>
-          <template #itemRender="{ route }">
-            <router-link :to="route.path">
-              {{ route.breadcrumbName }}
-            </router-link>
-          </template>
-        </a-breadcrumb>
-      </div>
+      <a-breadcrumb :routes="routes">
+        <template #separator>
+          <span class="path-separator">
+            <RightOutlined />
+          </span>
+        </template>
+        <template #itemRender="{ route }">
+          <router-link :to="route.path">
+            {{ route.breadcrumbName }}
+          </router-link>
+        </template>
+      </a-breadcrumb>
       <file-list :data="fileList" />
     </a-layout-content>
     <a-layout-footer id="layout-footer">
@@ -65,8 +63,8 @@ export default defineComponent({
   },
   computed: {
     routes() {
-      const re = /^\/?|\/?$/;
-      const parts: string[] = this.$route.path.replace(re, '').split('/');
+      const re = /^\/?|\/?$/g;
+      const parts: string[] = this.$route.path.replaceAll(re, '').split('/');
       const breadcrumbs: Route[] = [];
       parts.forEach((part, i) => {
         const parentPath = i ? breadcrumbs[i - 1].path : '/';
@@ -82,7 +80,7 @@ export default defineComponent({
     this.fetchData();
   },
   methods: {
-    async fetchData() {
+    fetchData() {
       const re = /^\/?files\/?/;
       const path: string = this.$route.path.replace(re, '');
       fileClient
@@ -108,28 +106,29 @@ export default defineComponent({
   z-index: 1;
   width: 100%;
   height: 64px;
-  background-color: #5f113f;
+  background-color: #c41d7f;
   // background-color: #780650;
 
   > .title {
     float: left;
     color: #e6fffb;
-    font-size: 24px;
+    font-size: 2em;
   }
 }
 
 #layout-content {
   margin-top: 64px;
-  padding: 20px 50px;
+  padding: 0 50px;
 
-  .path-crumb {
+  .ant-breadcrumb {
+    margin: 20px 0;
+
     a {
-      font-size: 20px;
-      line-height: 28px;
+      font-size: 1.5em;
     }
 
     > span:last-child a {
-      font-weight: 700;
+      font-weight: bolder;
     }
 
     .path-separator {

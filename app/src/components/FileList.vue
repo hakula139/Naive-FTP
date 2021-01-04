@@ -2,58 +2,80 @@
   <a-table
     :columns="columns"
     :data-source="data"
+    :pagination="false"
+    :row-key="rowKey"
     :row-selection="rowSelection"
-    :scroll="scroll"
   >
-    <template #name="{ text }">
-      {{ text.first }} {{ text.last }}
+    <template #name="{ text, record }">
+      <router-link
+        v-if="record.fileType === 'Dir'"
+        :to="`${text}/`"
+      >
+        <b>
+          {{ text }}
+        </b>
+      </router-link>
+      <span v-else>
+        {{ text }}
+      </span>
+    </template>
+    <template #perms="{ text }">
+      <code>
+        {{ text }}
+      </code>
     </template>
   </a-table>
 </template>
 
 <script lang="ts">
 import { defineComponent, PropType } from 'vue';
-import { ColumnProps } from 'ant-design-vue/lib/table/interface';
 import { FileType } from '@/components/types';
 
-const columns: ColumnProps[] = [
+const columns = [
   {
     title: 'Name',
     dataIndex: 'fileName',
-    sorter: (a: FileType, b: FileType) => a.fileName < b.fileName,
-    sortDirections: ['ascend', 'descend'],
-    defaultSortOrder: 'ascend',
-    width: '30%',
     ellipsis: true,
+    sorter: (a: FileType, b: FileType) => a.fileName.localeCompare(b.fileName),
+    sortDirections: ['ascend', 'descend'],
+    slots: { customRender: 'name' },
   },
   {
     title: 'Size',
     dataIndex: 'fileSize',
-    width: '12%',
+    width: '10%',
+    align: 'right',
     ellipsis: true,
   },
   {
     title: 'Type',
     dataIndex: 'fileType',
-    width: '8%',
+    width: '10%',
+    align: 'right',
     ellipsis: true,
   },
   {
     title: 'Modified time',
     dataIndex: 'modTime',
-    width: '25%',
+    width: '20%',
+    align: 'right',
     ellipsis: true,
+    sorter: (a: FileType, b: FileType) => a.modTime.localeCompare(b.modTime),
+    sortDirections: ['descend', 'ascend'],
   },
   {
     title: 'Permissions',
     dataIndex: 'perms',
     width: '15%',
+    align: 'right',
     ellipsis: true,
+    slots: { customRender: 'perms' },
   },
   {
     title: 'Owner',
     dataIndex: 'owner',
     width: '10%',
+    align: 'right',
     ellipsis: true,
   },
 ];
@@ -68,8 +90,8 @@ export default defineComponent({
   data() {
     return {
       columns,
+      rowKey: 'fileName',
       rowSelection: {},
-      scroll: { y: true },
     };
   },
 });

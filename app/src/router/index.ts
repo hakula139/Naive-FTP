@@ -18,7 +18,7 @@ const routes: Array<RouteRecordRaw> = [
   },
   {
     path: '/:pathMatch(.*)*',
-    redirect: (to) => `/files${to.path}`,
+    redirect: { name: 'Layout' },
   },
 ];
 
