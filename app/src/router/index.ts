@@ -7,7 +7,7 @@ const NotFound = () =>
 
 const routes: Array<RouteRecordRaw> = [
   {
-    path: '/files/:pathMatch(.*)*',
+    path: '/files/:pathMatch(.*)*/',
     name: 'Layout',
     component: Layout,
   },

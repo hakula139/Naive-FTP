@@ -7,6 +7,7 @@ import router from './router';
 import {
   Breadcrumb,
   Button,
+  Empty,
   Layout,
   Space,
   Table,
@@ -19,6 +20,7 @@ app.use(router);
 app
   .use(Breadcrumb)
   .use(Button)
+  .use(Empty)
   .use(Layout)
   .use(Space)
   .use(Table);

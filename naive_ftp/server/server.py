@@ -163,7 +163,7 @@ class ftp_server(Thread):
 
         self.send_status(220)
 
-    def ls(self, path: str) -> None:
+    def ls(self, path: str = '.') -> None:
         '''
         List information of a file or directory.
 

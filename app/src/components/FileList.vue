@@ -2,6 +2,7 @@
   <a-table
     :columns="columns"
     :data-source="data"
+    :loading="loading"
     :pagination="false"
     :row-key="rowKey"
     :row-selection="{
@@ -85,13 +86,17 @@ const columns = [
 
 export default defineComponent({
   props: {
+    selected: {
+      type: Array as PropType<string[]>,
+      default: [],
+    },
     data: {
       type: Array as PropType<FileType[]>,
       required: true,
     },
-    selected: {
-      type: Array as PropType<string[]>,
-      default: [],
+    loading: {
+      type: Boolean,
+      required: true,
     },
   },
   emits: {
@@ -105,6 +110,7 @@ export default defineComponent({
   },
   methods: {
     onSelectChange(selectedRowKeys: string[]) {
+      console.log(this.data);
       this.$emit('update:selected', selectedRowKeys);
     },
   },

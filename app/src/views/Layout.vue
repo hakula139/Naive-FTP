@@ -58,6 +58,7 @@
       <file-list
         v-model:selected="selectedRowKeys"
         :data="fileList"
+        :loading="loading"
       />
     </a-layout-content>
     <a-layout-footer id="layout-footer">
@@ -85,7 +86,7 @@ import {
 
 import { FileList } from '@/components';
 import { FileType } from '@/components/types';
-import { fileClient } from '@/apis/mocks';
+import { fileClient } from '@/apis';
 
 export default defineComponent({
   components: {
@@ -105,6 +106,7 @@ export default defineComponent({
       },
       selectedRowKeys: [] as string[],
       fileList: [] as FileType[],
+      loading: false,
     };
   },
   computed: {
@@ -125,20 +127,26 @@ export default defineComponent({
       return this.selectedRowKeys.length > 0;
     },
   },
+  watch: {
+    $route: fetch,
+  },
   created() {
     this.fetch();
   },
   methods: {
-    fetch(): void {
+    fetch() {
+      this.loading = true;
       const re = /^\/?files\/?/;
       const path: string = this.$route.path.replace(re, '');
       fileClient
         .getFileList({ path })
         .then((resp) => {
+          this.loading = false;
           this.fileList = resp.data;
         })
         .catch(() => {
-          this.$router.push('NotFound');
+          this.loading = false;
+          this.$router.push({ name: 'NotFound' });
         });
     },
   },

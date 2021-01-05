@@ -9,7 +9,7 @@ interface FileListReq {
 
 interface FileListResp {
   // Server status code
-  status: number;
+  status_code: number;
   // Server response message
   msg: string;
   // File list data

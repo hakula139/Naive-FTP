@@ -16,9 +16,11 @@ class ftp_client():
     Naive-FTP client side
     '''
 
-    def __init__(self) -> None:
+    def __init__(self, cli_mode: bool = True) -> None:
         '''
         Initialize class variables.
+
+        :param cli_mode: True for CLI, False for module usage
         '''
 
         # Properties
@@ -26,6 +28,7 @@ class ftp_client():
         self.ctrl_timeout_duration: float = 3.0
         self.data_timeout_duration: float = 3.0
         self.local_dir: str = os.path.realpath('local_files')
+        self.cli_mode: bool = cli_mode
 
         # Control connection
         self.ctrl_conn: socket.socket = None
@@ -55,17 +58,20 @@ class ftp_client():
         try:
             resp = _get_resp()
         except socket.timeout:
-            log('debug', f'No response received, should be: {code}')
+            if self.cli_mode:
+                log('debug', f'No response received, should be: {code}')
             return False, 0, None
         except socket.error as e:
-            log('debug', f'Remote connection closed: {e}, should be: {code}')
+            if self.cli_mode:
+                log('debug', f'Connection closed: {e}, should be: {code}')
             self.close_ctrl_conn()
             return False, 0, None
 
         try:
             resp_code, resp_msg = resp.split(None, 1)
             if resp_code != str(code):
-                log('debug', f'Response: {resp_code}, should be: {code}')
+                if self.cli_mode:
+                    log('debug', f'Response: {resp_code}, should be: {code}')
                 return False, resp_code, resp_msg
             return True, resp_code, resp_msg
         except ValueError as e:
@@ -103,7 +109,8 @@ class ftp_client():
             log('error', f'Data connection failed, error: {err}')
             self.close_data_conn()
         else:
-            log('debug', f'Data connection opened: {self.data_addr}')
+            if self.cli_mode:
+                log('debug', f'Data connection opened: {self.data_addr}')
 
     def close_data_conn(self) -> None:
         '''
@@ -114,17 +121,22 @@ class ftp_client():
             self.data_conn.close()
             self.data_conn = None
 
-    def open_ctrl_conn(self) -> None:
+    def open_ctrl_conn(self) -> bool:
         '''
         Open control connection.
+
+        Return True if succeeded.
         '''
 
         if self.ping():
-            op = input(
-                'Already connected. Close and establish a new connection? (y/N): ',
-            )
-            if op.lower() != 'y':
-                return
+            if self.cli_mode:
+                op = input(
+                    'Already connected. Close and establish a new connection? (y/N): ',
+                )
+                if op.lower() != 'y':
+                    return True
+            else:
+                return True
             self.close_ctrl_conn()
 
         self.ctrl_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -133,10 +145,13 @@ class ftp_client():
         if err:
             log('error', f'Connection failed, error: {err}')
             self.close_ctrl_conn()
+            return False
         elif not self.check_resp(220)[0]:
             self.close_ctrl_conn()
+            return False
         else:
             log('info', 'Connected to server.')
+            return True
 
     def close_ctrl_conn(self) -> None:
         '''
@@ -146,7 +161,8 @@ class ftp_client():
         if self.ctrl_conn:
             self.ctrl_conn.close()
             self.ctrl_conn = None
-            log('debug', 'Connection closed.')
+            if self.cli_mode:
+                log('debug', 'Connection closed.')
 
     def help(self) -> None:
         '''
@@ -196,12 +212,14 @@ class ftp_client():
         _print_cmd('RMDI', '<server_path>', _read_doc(self.rmdir))
         _print_cmd('RMDA', '<server_path>', _read_doc(self.rmdir_all))
 
-    def open(self) -> None:
+    def open(self) -> bool:
         '''
         Open a connection to server.
+
+        Return True if succeeded.
         '''
 
-        self.open_ctrl_conn()
+        return self.open_ctrl_conn()
 
     def close(self) -> None:
         '''
@@ -216,6 +234,8 @@ class ftp_client():
     def ping(self) -> bool:
         '''
         Check connection to server. Ping!
+
+        Return True if connected.
         '''
 
         if not self.ctrl_conn:
@@ -230,9 +250,11 @@ class ftp_client():
         else:
             return True
 
-    def ls(self, path: str = '.') -> None:
+    def ls(self, path: str = '.') -> list[object]:
         '''
         List information of a file or directory.
+
+        Return the parsed file information list.
 
         :param path: server path to the file or directory,
                      using current path by default
@@ -281,7 +303,7 @@ class ftp_client():
                 for check in type_dict:
                     if check(st_mode):
                         return type_dict[check]
-                return 'Unk'
+                return 'Unkn'
 
             def _parse_perms(st_mode: int) -> str:
                 '''
@@ -339,6 +361,24 @@ class ftp_client():
             except ValueError as e:
                 log('error', f'Invalid response: {info}, error: {e}')
 
+        def _to_dict(info: Tuple[str, str, str, str, str, str]) -> dict:
+            '''
+            Convert an information entry into key-value pairs in JSON syntax.
+
+            Return a dictionary version of info.
+
+            :param info: (file_name, file_size, file_type, mod_time, perms, owner)
+            '''
+
+            return {
+                'fileName': info[0],
+                'fileSize': info[1],
+                'fileType': info[2],
+                'modTime': info[3],
+                'perms': info[4],
+                'owner': info[5],
+            }
+
         if not self.ping():
             log('info', 'Please connect to server first.')
             return
@@ -371,14 +411,20 @@ class ftp_client():
             except (ValueError, TypeError) as e:
                 log('error', f'Invalid response: {raw_resp}, error: {e}')
             else:
+                infos = []
                 log('info', 'Start of list.')
                 for resp in resp_list:
                     info = _parse_stat(resp)
                     if info:
-                        _print_info(info)
+                        if self.cli_mode:
+                            _print_info(info)
+                        info_dict = _to_dict(info)
+                        infos.append(info_dict)
                 log('info', 'End of list.')
+                return infos
         except socket.error:
-            log('debug', 'Data connection closed.')
+            if self.cli_mode:
+                log('debug', 'Data connection closed.')
         finally:
             self.close_data_conn()
 
@@ -417,7 +463,8 @@ class ftp_client():
         except OSError as e:
             log('warn', f'System error: {e}')
         except socket.error:
-            log('debug', 'Data connection closed.')
+            if self.cli_mode:
+                log('debug', 'Data connection closed.')
         else:
             log('info', 'File successfully downloaded.')
         finally:
@@ -461,7 +508,8 @@ class ftp_client():
         except OSError as e:
             log('warn', f'System error: {e}')
         except socket.error:
-            log('debug', 'Data connection closed.')
+            if self.cli_mode:
+                log('debug', 'Data connection closed.')
         else:
             log('info', 'File successfully uploaded.')
         finally:
@@ -621,10 +669,12 @@ class ftp_client():
                 if raw_cmd:
                     self.router(raw_cmd)
             except socket.timeout:
-                log('debug', f'Connection timeout.')
+                if self.cli_mode:
+                    log('debug', f'Connection timeout.')
                 self.close_ctrl_conn()
             except socket.error:
-                log('debug', f'Remote connection closed.')
+                if self.cli_mode:
+                    log('debug', f'Connection closed.')
                 self.close_ctrl_conn()
             except KeyboardInterrupt:
                 print('\nInterrupted.')

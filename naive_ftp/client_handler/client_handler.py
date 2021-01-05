@@ -1,13 +1,15 @@
-import socket
-from naive_ftp.client.client import ftp_client
-from flask import Flask
+'''
+Naive-FTP client handler, a middleware between frontend and backend.
 
-server_host: str = socket.gethostname()
-server_port: int = 2121
+Pass requests from frontend to backend in string format,
+and send responses back to frontend in JSON format.
+'''
+
+from flask import Flask
+from flask_cors import CORS
+from naive_ftp.client_handler.router import list_handler
 
 app = Flask(__name__)
+CORS(app)
 
-
-@app.route('/')
-def hello_world():
-    return '<p>Hello, World!</p>'
+app.register_blueprint(list_handler, url_prefix='/api')
