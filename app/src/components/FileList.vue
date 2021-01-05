@@ -4,7 +4,10 @@
     :data-source="data"
     :pagination="false"
     :row-key="rowKey"
-    :row-selection="rowSelection"
+    :row-selection="{
+      selectedRowKeys: selected,
+      onChange: onSelectChange,
+    }"
   >
     <template #name="{ text, record }">
       <router-link
@@ -86,13 +89,24 @@ export default defineComponent({
       type: Array as PropType<FileType[]>,
       required: true,
     },
+    selected: {
+      type: Array as PropType<string[]>,
+      default: [],
+    },
+  },
+  emits: {
+    'update:selected': null,
   },
   data() {
     return {
       columns,
       rowKey: 'fileName',
-      rowSelection: {},
     };
+  },
+  methods: {
+    onSelectChange(selectedRowKeys: string[]) {
+      this.$emit('update:selected', selectedRowKeys);
+    },
   },
 });
 </script>

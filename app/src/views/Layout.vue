@@ -1,12 +1,46 @@
 <template>
   <a-layout id="layout">
     <a-layout-header id="layout-header">
-      <router-link
-        :to="{ name: 'Layout' }"
-        class="title"
-      >
-        {{ title }}
-      </router-link>
+      <a-space size="middle">
+        <router-link
+          :to="{ name: 'Layout' }"
+          class="title"
+        >
+          {{ title }}
+        </router-link>
+        <a-button
+          type="primary"
+          shape="circle"
+          size="large"
+        >
+          <template #icon>
+            <FolderAddOutlined />
+          </template>
+        </a-button>
+        <a-button
+          v-if="hasSelected"
+          type="danger"
+          shape="circle"
+          size="large"
+        >
+          <template #icon>
+            <DeleteOutlined />
+          </template>
+        </a-button>
+      </a-space>
+      <a-space size="middle">
+        <a-button
+          type="primary"
+          shape="circle"
+          size="large"
+          :href="links.repo"
+          target="_blank"
+        >
+          <template #icon>
+            <GithubOutlined />
+          </template>
+        </a-button>
+      </a-space>
     </a-layout-header>
     <a-layout-content id="layout-content">
       <a-breadcrumb :routes="routes">
@@ -21,7 +55,10 @@
           </router-link>
         </template>
       </a-breadcrumb>
-      <file-list :data="fileList" />
+      <file-list
+        v-model:selected="selectedRowKeys"
+        :data="fileList"
+      />
     </a-layout-content>
     <a-layout-footer id="layout-footer">
       {{ title }} created by
@@ -39,7 +76,12 @@
 import { defineComponent } from 'vue';
 
 import { Route } from 'ant-design-vue/lib/breadcrumb/Breadcrumb';
-import { RightOutlined } from '@ant-design/icons-vue';
+import {
+  DeleteOutlined,
+  FolderAddOutlined,
+  GithubOutlined,
+  RightOutlined,
+} from '@ant-design/icons-vue';
 
 import { FileList } from '@/components';
 import { FileType } from '@/components/types';
@@ -47,6 +89,9 @@ import { fileClient } from '@/apis/mocks';
 
 export default defineComponent({
   components: {
+    DeleteOutlined,
+    FolderAddOutlined,
+    GithubOutlined,
     RightOutlined,
     FileList,
   },
@@ -58,11 +103,12 @@ export default defineComponent({
         blog: 'https://hakula.xyz',
         repo: 'https://github.com/hakula139/Naive-FTP',
       },
+      selectedRowKeys: [] as string[],
       fileList: [] as FileType[],
     };
   },
   computed: {
-    routes() {
+    routes(): Route[] {
       const re = /^\/?|\/?$/g;
       const parts: string[] = this.$route.path.replaceAll(re, '').split('/');
       const breadcrumbs: Route[] = [];
@@ -75,12 +121,15 @@ export default defineComponent({
       });
       return breadcrumbs;
     },
+    hasSelected(): boolean {
+      return this.selectedRowKeys.length > 0;
+    },
   },
   created() {
-    this.fetchData();
+    this.fetch();
   },
   methods: {
-    fetchData() {
+    fetch(): void {
       const re = /^\/?files\/?/;
       const path: string = this.$route.path.replace(re, '');
       fileClient
@@ -104,13 +153,20 @@ export default defineComponent({
 #layout-header {
   position: fixed;
   z-index: 1;
-  width: 100%;
   height: 64px;
-  background-color: #c41d7f;
-  // background-color: #780650;
+  width: 100%;
+  background-color: #d3a998;
 
-  > .title {
-    float: left;
+  .ant-space {
+    height: 64px;
+
+    &:last-of-type {
+      float: right;
+    }
+  }
+
+  .title {
+    margin-right: 16px;
     color: #e6fffb;
     font-size: 2em;
   }
