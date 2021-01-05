@@ -2,12 +2,12 @@ import axios from 'axios';
 import { API_URL } from '@/utils/config';
 import FileType from '@/components/types/file';
 
-interface FileReq {
+interface FileListReq {
   // File path
   path: string;
 }
 
-interface FileResp {
+interface FileListResp {
   // Server status code
   status: number;
   // Server response message
@@ -16,7 +16,7 @@ interface FileResp {
   data: FileType[];
 }
 
-const getFileList = (req: FileReq): Promise<FileResp> =>
+const getFileList = (req: FileListReq): Promise<FileListResp> =>
   new Promise((resolve, reject) => {
     axios
       .get(`${API_URL}/list`, {
