@@ -100,8 +100,9 @@ yarn build
 ## TODOs
 
 - [ ] Implement a GUI using Flask and Vue.js
-  - [ ] Set up Vue.js
+  - [x] Set up Vue.js
   - [ ] Set up Flask
+- [ ] Compose a detailed document
 
 ## Contributors
 
