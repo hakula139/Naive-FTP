@@ -87,7 +87,8 @@ import {
 
 import { FileList } from '@/components';
 import { FileType } from '@/components/types';
-import { fileClient } from '@/apis';
+import { listClient } from '@/apis';
+import { ListResp } from '@/apis/listClient';
 
 export default defineComponent({
   components: {
@@ -151,9 +152,9 @@ export default defineComponent({
       this.loading = true;
       const re = /^\/?files\/?/;
       const path: string = this.$route.path.replace(re, '');
-      fileClient
+      listClient
         .getFileList({ path })
-        .then((resp) => {
+        .then((resp: ListResp) => {
           this.loading = false;
           this.fileList = resp.data;
           document.title = this.title;
@@ -170,8 +171,14 @@ export default defineComponent({
       let status = 504;
       let msg = 'Gateway Timeout';
       if (err.response) {
-        status = err.response.status ? err.response.status : status;
-        msg = err.response.data ? err.response.data : msg;
+        if (err.response.status) {
+          status = err.response.status;
+        }
+        if (err.response.data) {
+          msg = err.response.data;
+        } else if (err.response.statusText) {
+          msg = err.response.statusText;
+        }
       }
       return { status, msg };
     },

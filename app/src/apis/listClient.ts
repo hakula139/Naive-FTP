@@ -2,12 +2,12 @@ import axios, { AxiosError, AxiosResponse } from 'axios';
 import { API_URL } from '@/utils/config';
 import FileType from '@/components/types/file';
 
-interface FileListReq {
+export interface ListReq {
   // File path
   path: string;
 }
 
-interface FileListResp {
+export interface ListResp {
   // Server status code
   status_code: number;
   // Server response message
@@ -16,7 +16,7 @@ interface FileListResp {
   data: FileType[];
 }
 
-const getFileList = (req: FileListReq): Promise<FileListResp> =>
+const getFileList = (req: ListReq): Promise<ListResp> =>
   new Promise((resolve, reject) => {
     axios
       .get(`${API_URL}list`, {
@@ -28,8 +28,8 @@ const getFileList = (req: FileListReq): Promise<FileListResp> =>
       .catch((err: AxiosError) => reject(err));
   });
 
-const fileClient = {
+const listClient = {
   getFileList,
 };
 
-export default fileClient;
+export default listClient;
