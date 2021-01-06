@@ -303,7 +303,7 @@ class ftp_server(Thread):
             return
         dir_name, file_name = dst_path.rsplit(os.sep, 1)
         if not os.path.isdir(dir_name):
-            if self.mkdir(dir_name, is_client=False):  # failed to make directory
+            if not self.mkdir(dir_name, is_client=False):  # failed to make directory
                 return
         if not file_name:  # make directory only
             return
@@ -385,11 +385,11 @@ class ftp_server(Thread):
 
         self.send_status(257, self.cwd_path)
 
-    def mkdir(self, path: str, is_client: bool = True) -> int:
+    def mkdir(self, path: str, is_client: bool = True) -> bool:
         '''
         Make a directory recursively.
 
-        Return -1 if failed, otherwise return 0.
+        Return True if succeeded.
 
         :param path: server path to the directory
         :param is_client: True for client, False for server internal use
@@ -399,7 +399,7 @@ class ftp_server(Thread):
         log('debug', f'Creating directory: {dst_path}')
         if not is_safe_path(dst_path, self.server_dir):
             self.send_status(553)
-            return
+            return False
         try:
             if not os.path.exists(dst_path):
                 os.makedirs(dst_path)
@@ -408,14 +408,13 @@ class ftp_server(Thread):
                 if is_client:
                     dir_path = dst_path.strip(self.server_dir)
                     self.send_status(257, dir_path)
+                return True
             else:
                 raise OSError
         except OSError:
             log('warn', f'Failed to make directory: {dst_path}')
             self.send_status(550)
-            return -1
-        else:
-            return 0
+            return False
 
     def rmdir(self, path: str, recursive: bool = False) -> None:
         '''

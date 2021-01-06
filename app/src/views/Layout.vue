@@ -12,6 +12,7 @@
           type="primary"
           shape="circle"
           size="large"
+          @click="onFolderAddClick"
         >
           <template #icon>
             <FolderAddOutlined />
@@ -89,7 +90,7 @@ import {
 
 import { FileList } from '@/components';
 import { FileType, RespType } from '@/components/types';
-import { commonClient, listClient } from '@/apis';
+import { fileClient, dirClient } from '@/apis';
 
 export default defineComponent({
   components: {
@@ -155,9 +156,12 @@ export default defineComponent({
     this.changeDirectory();
   },
   methods: {
+    onFolderAddClick() {
+      return;
+    },
     changeDirectory() {
       this.loading = true;
-      commonClient
+      dirClient
         .cwd({ path: this.path })
         .then((_resp: RespType) => {
           this.fetch();
@@ -172,8 +176,8 @@ export default defineComponent({
     },
     fetch() {
       this.loading = true;
-      listClient
-        .getFileList({ path: this.path })
+      dirClient
+        .list({ path: this.path })
         .then((resp: RespType) => {
           this.loading = false;
           if (resp.data) this.fileList = resp.data;
@@ -188,8 +192,8 @@ export default defineComponent({
         });
     },
     retrieve(event: string) {
-      commonClient
-        .retrieve({ path: event })
+      fileClient
+        .retrieve({ path: this.path + event })
         .then((resp: RespType) => {
           if (resp.msg) {
             this.openNotification('success', `File downloaded to ${resp.msg}`);

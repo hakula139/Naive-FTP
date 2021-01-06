@@ -7,11 +7,10 @@ and send responses back to frontend in JSON format.
 
 from flask import Flask
 from flask_cors import CORS
-from naive_ftp.client_handler.router import list_handler, retr_handler, dir_handler
+from naive_ftp.client_handler.router import file_handler, dir_handler
 
 app = Flask(__name__)
 CORS(app)
 
-app.register_blueprint(list_handler, url_prefix='/api')
-app.register_blueprint(retr_handler, url_prefix='/api')
+app.register_blueprint(file_handler, url_prefix='/api')
 app.register_blueprint(dir_handler, url_prefix='/api')

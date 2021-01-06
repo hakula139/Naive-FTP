@@ -2,10 +2,12 @@ import axios, { AxiosError, AxiosResponse } from 'axios';
 import { API_URL } from '@/utils/config';
 import { ReqType, RespType } from '@/components/types';
 
-const retrieve = (req: ReqType): Promise<RespType> =>
+const dirApiUrl = API_URL + 'dir';
+
+const list = (req: ReqType): Promise<RespType> =>
   new Promise((resolve, reject) => {
     axios
-      .get(`${API_URL}retr`, {
+      .get(dirApiUrl, {
         params: req,
       })
       .then((resp: AxiosResponse) => {
@@ -17,16 +19,27 @@ const retrieve = (req: ReqType): Promise<RespType> =>
 const cwd = (req: ReqType): Promise<RespType> =>
   new Promise((resolve, reject) => {
     axios
-      .post(`${API_URL}dir`, req)
+      .post(dirApiUrl, req)
       .then((resp: AxiosResponse) => {
         resolve(resp.data);
       })
       .catch((err: AxiosError) => reject(err));
   });
 
-const commonClient = {
-  retrieve,
+const mkdir = (req: ReqType): Promise<RespType> =>
+  new Promise((resolve, reject) => {
+    axios
+      .put(dirApiUrl, req)
+      .then((resp: AxiosResponse) => {
+        resolve(resp.data);
+      })
+      .catch((err: AxiosError) => reject(err));
+  });
+
+const dirClient = {
+  list,
   cwd,
+  mkdir,
 };
 
-export default commonClient;
+export default dirClient;

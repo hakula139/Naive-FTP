@@ -3,76 +3,73 @@ from flask import Blueprint, request
 
 # STOR
 # DELE
-# MKD
-# RMD
 # RMDA
 
-list_handler = Blueprint('list_handler', __name__)
-retr_handler = Blueprint('retr_handler', __name__)
+file_handler = Blueprint('file_handler', __name__)
 dir_handler = Blueprint('dir_handler', __name__)
 
 client = ftp_client(cli_mode=False)
 
 
-@list_handler.route('/list', methods=['GET'])
-def list():
-    '''
-    LIST <server_path>
-
-    req: GET /api/list?path=:server_path
-    resp: { data: list[dict] }
-    '''
-
-    if not client.open():
-        return '', '503 Server down'
-    path = request.args.get('path', default='', type=str)
-    data = client.ls(path)
-    if not data:
-        return '', '404 Not found'
-    return {
-        'data': data,
-    }
-
-
-@retr_handler.route('/retr', methods=['GET'])
-def retr():
+@file_handler.route('/file', methods=['GET'])
+def file():
     '''
     RETR <server_path>
 
-    req: GET /api/retr?path=:server_path
-    resp: { msg: str }
+        req: GET /api/retr?path=:server_path
+        resp: { msg: str }
     '''
 
     if not client.open():
         return '', '503 Server down'
-    src_path = request.args.get('path', type=str)
-    if not src_path:
-        return '', '400 Bad Request'
-    dst_path = client.retrieve(src_path)
-    if not dst_path:
-        return '', '404 Failed to download'
-    return {
-        'msg': dst_path,
-    }
+
+    if request.method == 'GET':
+        src_path = request.args.get('path', type=str)
+        if not src_path:
+            return '', '400 Bad Request'
+        dst_path = client.retrieve(src_path)
+        if not dst_path:
+            return '', '404 Failed to download'
+        return {
+            'msg': dst_path,
+        }
 
 
-@dir_handler.route('/dir', methods=['GET', 'POST'])
+@dir_handler.route('/dir', methods=['GET', 'POST', 'PUT'])
 def dir():
     '''
+    LIST <server_path>
+
+        req: GET /api/dir?path=:server_path
+        resp: { data: list[dict] }
+
     CWD <server_path>
 
-    req: POST /api/dir
-    req_body: { path: str }
-    resp: { msg: str }
+        req: POST /api/dir
+        req_body: { path: str }
+        resp: { msg: str }
 
-    PWD
+    MKD <server_path>
 
-    req: GET /api/dir
-    resp: { msg: str }
+        req: PUT /api/dir
+        req_body: { path: str }
+        resp: { msg: str }
     '''
 
     if not client.open():
         return '', '503 Server down'
+
+    # LIST
+    if request.method == 'GET':
+        path = request.args.get('path', default='', type=str)
+        data = client.ls(path)
+        if not data:
+            return '', '404 Not found'
+        return {
+            'data': data,
+        }
+
+    # CWD
     if request.method == 'POST':
         data: dict = request.get_json()
         dst_path = data.get('path')
@@ -85,10 +82,15 @@ def dir():
             'msg': dst_path,
         }
 
-    if request.method == 'GET':
-        path = client.pwd()
-        if not path:
-            return '', '500 Internal Server Error'
+    # MKD
+    if request.method == 'PUT':
+        data: dict = request.get_json()
+        dst_path = data.get('path')
+        if not dst_path:
+            dst_path = '/'
+        status = client.mkdir(dst_path)
+        if not status:
+            return '', '403 Failed to create directory'
         return {
-            'msg': path,
+            'msg': dst_path,
         }
