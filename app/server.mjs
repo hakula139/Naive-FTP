@@ -1,5 +1,5 @@
 import compression from 'compression';
-import connect_history from 'connect-history-api-fallback';
+import history from 'connect-history-api-fallback';
 import cors from 'cors';
 import express from 'express';
 import favicon from 'serve-favicon';
@@ -13,12 +13,7 @@ app
   .use(compression())
   .use(cors())
   .use(favicon(path.join(distPath, 'favicon.ico')))
-  .use(express.static(distPath))
-  .use(
-    connect_history({
-      index: path.join(distPath, 'index.html'),
-    })
-  )
+  .use(history())
   .use(express.static(distPath))
   .listen(listen_port, () => {
     console.log('Welcome to Naive-FTP client handler! Press CTRL+C to exit.');
