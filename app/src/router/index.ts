@@ -3,8 +3,8 @@ import { BASE_URL } from '@/utils/config';
 
 const Layout = () =>
   import(/* webpackChunkName: "layout" */ '@/views/Layout.vue');
-const NotFound = () =>
-  import(/* webpackChunkName: "not-found" */ '@/views/NotFound.vue');
+const ErrorPage = () =>
+  import(/* webpackChunkName: "not-found" */ '@/views/ErrorPage.vue');
 
 const routes: Array<RouteRecordRaw> = [
   {
@@ -13,9 +13,10 @@ const routes: Array<RouteRecordRaw> = [
     component: Layout,
   },
   {
-    path: '/404',
-    name: 'NotFound',
-    component: NotFound,
+    path: '/error',
+    name: 'ErrorPage',
+    component: ErrorPage,
+    props: true,
   },
   {
     path: '/:pathMatch(.*)*',

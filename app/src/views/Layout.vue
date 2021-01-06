@@ -6,7 +6,7 @@
           :to="{ name: 'Layout' }"
           class="title"
         >
-          {{ title }}
+          {{ name }}
         </router-link>
         <a-button
           type="primary"
@@ -62,7 +62,7 @@
       />
     </a-layout-content>
     <a-layout-footer id="layout-footer">
-      {{ title }} created by
+      {{ name }} created by
       <a
         :href="links.blog"
         target="_blank"
@@ -75,6 +75,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
+import { AxiosError } from 'axios';
 
 import { Route } from 'ant-design-vue/lib/breadcrumb/Breadcrumb';
 import {
@@ -98,7 +99,7 @@ export default defineComponent({
   },
   data() {
     return {
-      title: 'Naive-FTP',
+      name: 'Naive-FTP',
       author: 'Hakula',
       links: {
         blog: 'https://hakula.xyz',
@@ -110,9 +111,18 @@ export default defineComponent({
     };
   },
   computed: {
-    routes(): Route[] {
+    title(): string {
+      const separator = ' > ';
+      const route = this.route_parts.slice(1).join(separator);
+      return this.name + (route ? separator + route : '');
+    },
+    route_parts(): string[] {
       const re = /^\/?|\/?$/g;
-      const parts: string[] = this.$route.path.replaceAll(re, '').split('/');
+      const parts = this.$route.path.replaceAll(re, '').split('/');
+      return parts;
+    },
+    routes(): Route[] {
+      const parts = this.route_parts;
       const breadcrumbs: Route[] = [];
       parts.forEach((part, i) => {
         const parentPath = i ? breadcrumbs[i - 1].path : '/';
@@ -128,7 +138,10 @@ export default defineComponent({
     },
   },
   watch: {
-    '$route': 'fetch',
+    $route: function () {
+      const re = /^\/files\//;
+      if (this.$route.path.match(re)) this.fetch();
+    },
   },
   created() {
     this.fetch();
@@ -143,11 +156,24 @@ export default defineComponent({
         .then((resp) => {
           this.loading = false;
           this.fileList = resp.data;
+          document.title = this.title;
         })
-        .catch(() => {
+        .catch((err: AxiosError) => {
           this.loading = false;
-          this.$router.push({ name: 'NotFound' });
+          this.$router.replace({
+            name: 'ErrorPage',
+            params: this.parse_error(err),
+          });
         });
+    },
+    parse_error(err: AxiosError) {
+      let status = 504;
+      let msg = 'Gateway Timeout';
+      if (err.response) {
+        status = err.response.status ? err.response.status : status;
+        msg = err.response.data ? err.response.data : msg;
+      }
+      return { status, msg };
     },
   },
 });
