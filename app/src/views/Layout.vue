@@ -43,7 +43,7 @@
       </a-space>
     </a-layout-header>
     <a-layout-content id="layout-content">
-      <a-breadcrumb :routes="routes">
+      <a-breadcrumb :routes="breadcrumbs">
         <template #separator>
           <span class="path-separator">
             <RightOutlined />
@@ -59,6 +59,7 @@
         v-model:selected="selectedRowKeys"
         :data="fileList"
         :loading="loading"
+        @retrieve="retrieve"
       />
     </a-layout-content>
     <a-layout-footer id="layout-footer">
@@ -77,6 +78,7 @@
 import { defineComponent } from 'vue';
 import { AxiosError } from 'axios';
 
+import { notification } from 'ant-design-vue';
 import { Route } from 'ant-design-vue/lib/breadcrumb/Breadcrumb';
 import {
   DeleteOutlined,
@@ -87,7 +89,7 @@ import {
 
 import { FileList } from '@/components';
 import { FileType, RespType } from '@/components/types';
-import { listClient } from '@/apis';
+import { commonClient, listClient } from '@/apis';
 
 export default defineComponent({
   components: {
@@ -105,6 +107,7 @@ export default defineComponent({
         blog: 'https://hakula.xyz',
         repo: 'https://github.com/hakula139/Naive-FTP',
       },
+      local_dir: 'local_files',
       selectedRowKeys: [] as string[],
       fileList: [] as FileType[],
       loading: false,
@@ -116,12 +119,17 @@ export default defineComponent({
       const route = this.route_parts.slice(1).join(separator);
       return this.name + (route ? separator + route : '');
     },
+    path(): string {
+      const re = /^\/?files/;
+      const path = this.$route.path.replace(re, '');
+      return path;
+    },
     route_parts(): string[] {
       const re = /^\/?|\/?$/g;
       const parts = this.$route.path.replaceAll(re, '').split('/');
       return parts;
     },
-    routes(): Route[] {
+    breadcrumbs(): Route[] {
       const parts = this.route_parts;
       const breadcrumbs: Route[] = [];
       parts.forEach((part, i) => {
@@ -140,19 +148,32 @@ export default defineComponent({
   watch: {
     $route: function () {
       const re = /^\/files\//;
-      if (this.$route.path.match(re)) this.fetch();
+      if (this.$route.path.match(re)) this.changeDirectory();
     },
   },
   created() {
-    this.fetch();
+    this.changeDirectory();
   },
   methods: {
+    changeDirectory() {
+      this.loading = true;
+      commonClient
+        .cwd({ path: this.path })
+        .then((_resp: RespType) => {
+          this.fetch();
+        })
+        .catch((err: AxiosError) => {
+          this.loading = false;
+          this.$router.push({
+            name: 'ErrorPage',
+            params: this.parse_error(err),
+          });
+        });
+    },
     fetch() {
       this.loading = true;
-      const re = /^\/?files\/?/;
-      const path: string = this.$route.path.replace(re, '');
       listClient
-        .getFileList({ path })
+        .getFileList({ path: this.path })
         .then((resp: RespType) => {
           this.loading = false;
           if (resp.data) this.fileList = resp.data;
@@ -160,11 +181,32 @@ export default defineComponent({
         })
         .catch((err: AxiosError) => {
           this.loading = false;
-          this.$router.replace({
+          this.$router.push({
             name: 'ErrorPage',
             params: this.parse_error(err),
           });
         });
+    },
+    retrieve(event: string) {
+      commonClient
+        .retrieve({ path: event })
+        .then((resp: RespType) => {
+          if (resp.msg) {
+            this.openNotification('success', `File downloaded to ${resp.msg}`);
+          }
+        })
+        .catch((err: AxiosError) => {
+          this.$router.push({
+            name: 'ErrorPage',
+            params: this.parse_error(err),
+          });
+        });
+    },
+    openNotification(type: string, description: string) {
+      notification[type]({
+        message: 'Success',
+        description,
+      });
     },
     parse_error(err: AxiosError) {
       let status = 504;
@@ -173,9 +215,7 @@ export default defineComponent({
         if (err.response.status) {
           status = err.response.status;
         }
-        if (err.response.data) {
-          msg = err.response.data;
-        } else if (err.response.statusText) {
+        if (err.response.statusText) {
           msg = err.response.statusText;
         }
       }

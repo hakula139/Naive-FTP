@@ -250,7 +250,7 @@ class ftp_client():
         else:
             return True
 
-    def ls(self, path: str = '.') -> list[object]:
+    def ls(self, path: str = '.') -> list[dict]:
         '''
         List information of a file or directory.
 
@@ -325,7 +325,7 @@ class ftp_client():
                 return perms
 
             if not resp:
-                return
+                return None
             try:
                 file_name, st_size, st_mode, st_mtime, st_uid = resp.split(' ')
                 file_name = file_name.replace('%20', ' ')
@@ -341,7 +341,7 @@ class ftp_client():
                 owner = st_uid
             except (ValueError, TypeError) as e:
                 log('error', f'Invalid response: {resp}, error: {e}')
-                return
+                return None
             else:
                 return file_name, file_size, file_type, mod_time, perms, owner
 
@@ -381,18 +381,18 @@ class ftp_client():
 
         if not self.ping():
             log('info', 'Please connect to server first.')
-            return
+            return None
 
         self.ctrl_conn.sendall(f'LIST {path}\r\n'.encode('utf-8'))
 
         expected, _, resp_msg = self.check_resp(150)
         if not expected:
             log('warn', resp_msg)
-            return
+            return None
         self.open_data_conn()
         if not self.check_resp(225)[0]:
             self.close_data_conn()
-            return
+            return None
 
         try:
             raw_resp = b''
@@ -410,9 +410,9 @@ class ftp_client():
                 )
             except (ValueError, TypeError) as e:
                 log('error', f'Invalid response: {raw_resp}, error: {e}')
+                return None
             else:
                 infos = []
-                log('info', 'Start of list.')
                 for resp in resp_list:
                     info = _parse_stat(resp)
                     if info:
@@ -420,24 +420,26 @@ class ftp_client():
                             _print_info(info)
                         info_dict = _to_dict(info)
                         infos.append(info_dict)
-                log('info', 'End of list.')
                 return infos
         except socket.error:
             if self.cli_mode:
                 log('debug', 'Data connection closed.')
+            return None
         finally:
             self.close_data_conn()
 
-    def retrieve(self, path: str) -> None:
+    def retrieve(self, path: str) -> str:
         '''
         Retrieve a file from server.
+
+        Return the location of the downloaded file if succeeded, otherwise return None.
 
         :param path: server path to the file
         '''
 
         if not self.ping():
             log('info', 'Please connect to server first.')
-            return
+            return None
 
         dst_path = os.path.realpath(os.path.join(self.local_dir, path))
         log('info', f'Downloading file: {dst_path}')
@@ -447,11 +449,11 @@ class ftp_client():
         expected, _, resp_msg = self.check_resp(150)
         if not expected:
             log('warn', resp_msg)
-            return
+            return None
         self.open_data_conn()
         if not self.check_resp(225)[0]:
             self.close_data_conn()
-            return
+            return None
 
         try:
             with open(dst_path, 'wb') as dst_file:
@@ -462,11 +464,14 @@ class ftp_client():
                     dst_file.write(data)
         except OSError as e:
             log('warn', f'System error: {e}')
+            return None
         except socket.error:
             if self.cli_mode:
                 log('debug', 'Data connection closed.')
+            return None
         else:
             log('info', 'File successfully downloaded.')
+            return dst_path
         finally:
             self.close_data_conn()
 
@@ -533,9 +538,11 @@ class ftp_client():
         expected, _, resp_msg = self.check_resp(250)
         log('info' if expected else 'warn', resp_msg)
 
-    def cwd(self, path: str = '/') -> None:
+    def cwd(self, path: str = '/') -> bool:
         '''
         Change working directory.
+
+        Return True if succeeded.
 
         :param path: server path to the destination,
                      using root folder by default
@@ -543,30 +550,36 @@ class ftp_client():
 
         if not self.ping():
             log('info', 'Please connect to server first.')
-            return
+            return False
 
         self.ctrl_conn.sendall(f'CWD {path}\r\n'.encode('utf-8'))
         expected, _, resp_msg = self.check_resp(257)
         if not expected:
             log('warn', resp_msg)
+            return False
         else:
-            log('info', f'Changed to directory: {resp_msg}')
+            log('info', f'Changed directory to: {resp_msg}')
+            return True
 
-    def pwd(self) -> None:
+    def pwd(self) -> str:
         '''
         Print working directory.
+
+        Return current working directory.
         '''
 
         if not self.ping():
             log('info', 'Please connect to server first.')
-            return
+            return None
 
         self.ctrl_conn.sendall(f'PWD\r\n'.encode('utf-8'))
         expected, _, resp_msg = self.check_resp(257)
         if not expected:
             log('warn', resp_msg)
+            return None
         else:
             print(resp_msg)
+            return resp_msg
 
     def mkdir(self, path: str) -> None:
         '''

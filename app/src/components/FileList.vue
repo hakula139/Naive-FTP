@@ -12,16 +12,19 @@
   >
     <template #name="{ text, record }">
       <router-link
-        v-if="record.fileType === 'Dir'"
+        v-if="isDirectory(record)"
         :to="`${text}/`"
       >
         <b>
           {{ text }}
         </b>
       </router-link>
-      <span v-else>
+      <a
+        v-else
+        @click="onFileClick(text)"
+      >
         {{ text }}
-      </span>
+      </a>
     </template>
     <template #perms="{ text }">
       <code>
@@ -100,6 +103,7 @@ export default defineComponent({
     },
   },
   emits: {
+    retrieve: null,
     'update:selected': null,
   },
   data() {
@@ -109,8 +113,14 @@ export default defineComponent({
     };
   },
   methods: {
+    onFileClick(fileName: string) {
+      this.$emit('retrieve', fileName);
+    },
     onSelectChange(selectedRowKeys: string[]) {
       this.$emit('update:selected', selectedRowKeys);
+    },
+    isDirectory(file: FileType) {
+      return file.fileType === 'Dir';
     },
   },
 });
