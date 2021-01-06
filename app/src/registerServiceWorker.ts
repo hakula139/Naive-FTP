@@ -1,9 +1,10 @@
 /* eslint-disable no-console */
 
 import { register } from 'register-service-worker';
+import { BASE_URL, NODE_ENV } from '@/utils/config';
 
-if (process.env.NODE_ENV === 'production') {
-  register(`${process.env.BASE_URL}service-worker.js`, {
+if (NODE_ENV === 'production') {
+  register(`${BASE_URL}service-worker.js`, {
     ready() {
       console.log(
         'App is being served from cache by a service worker.\n' +
@@ -27,8 +28,8 @@ if (process.env.NODE_ENV === 'production') {
         'No internet connection found. App is running in offline mode.'
       );
     },
-    error(error) {
-      console.error('Error during service worker registration:', error);
+    error(err) {
+      console.error('Error during service worker registration:', err);
     },
   });
 }

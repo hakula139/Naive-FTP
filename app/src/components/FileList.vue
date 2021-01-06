@@ -110,7 +110,6 @@ export default defineComponent({
   },
   methods: {
     onSelectChange(selectedRowKeys: string[]) {
-      console.log(this.data);
       this.$emit('update:selected', selectedRowKeys);
     },
   },
