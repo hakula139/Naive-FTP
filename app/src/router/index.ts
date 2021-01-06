@@ -11,6 +11,7 @@ const routes: Array<RouteRecordRaw> = [
     path: '/files/:pathMatch(.*)*/',
     name: 'Layout',
     component: Layout,
+    strict: true,
   },
   {
     path: '/error',
