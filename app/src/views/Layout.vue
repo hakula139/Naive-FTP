@@ -128,7 +128,7 @@ export default defineComponent({
     },
   },
   watch: {
-    $route: fetch,
+    '$route': 'fetch',
   },
   created() {
     this.fetch();

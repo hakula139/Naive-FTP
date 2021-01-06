@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosError, AxiosResponse } from 'axios';
 import { API_URL } from '@/utils/config';
 import FileType from '@/components/types/file';
 
@@ -19,13 +19,13 @@ interface FileListResp {
 const getFileList = (req: FileListReq): Promise<FileListResp> =>
   new Promise((resolve, reject) => {
     axios
-      .get(`${API_URL}/list`, {
+      .get(`${API_URL}list`, {
         params: req,
       })
-      .then((resp) => {
+      .then((resp: AxiosResponse) => {
         resolve(resp.data);
       })
-      .catch((err) => reject(err));
+      .catch((err: AxiosError) => reject(err));
   });
 
 const fileClient = {
