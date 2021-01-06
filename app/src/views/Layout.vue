@@ -86,9 +86,8 @@ import {
 } from '@ant-design/icons-vue';
 
 import { FileList } from '@/components';
-import { FileType } from '@/components/types';
+import { FileType, RespType } from '@/components/types';
 import { listClient } from '@/apis';
-import { ListResp } from '@/apis/listClient';
 
 export default defineComponent({
   components: {
@@ -154,9 +153,9 @@ export default defineComponent({
       const path: string = this.$route.path.replace(re, '');
       listClient
         .getFileList({ path })
-        .then((resp: ListResp) => {
+        .then((resp: RespType) => {
           this.loading = false;
-          this.fileList = resp.data;
+          if (resp.data) this.fileList = resp.data;
           document.title = this.title;
         })
         .catch((err: AxiosError) => {
