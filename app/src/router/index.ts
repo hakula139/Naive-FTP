@@ -8,10 +8,20 @@ const ErrorPage = () =>
 
 const routes: Array<RouteRecordRaw> = [
   {
-    path: '/files/:pathMatch(.*)*/',
+    path: '/files/:pathMatch(.*)*',
     name: 'Layout',
     component: Layout,
-    strict: true,
+    beforeEnter: (to, _from, next) => {
+      // Add a trailing slash if not exist
+      if (to.path.endsWith('/')) {
+        next();
+      } else {
+        next({
+          path: `${to.path}/`,
+          replace: true,
+        });
+      }
+    },
   },
   {
     path: '/error',
