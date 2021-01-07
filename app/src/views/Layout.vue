@@ -80,8 +80,9 @@
         :confirm-loading="modal.loading"
         @ok="modal.onModalOk"
       >
-        <p>{{ modal.text }}</p>
+        <p>{{ modal.content }}</p>
         <a-input
+          v-if="modal.input"
           v-model:value="modal.data"
           :placeholder="modal.placeholder"
           allow-clear
@@ -143,8 +144,9 @@ export default defineComponent({
       modal: {
         visible: false,
         loading: false,
+        input: true,
         title: '',
-        text: '',
+        content: '',
         data: '',
         placeholder: '',
         onModalOk: Function(),
@@ -197,8 +199,9 @@ export default defineComponent({
       this.modal = {
         visible: true,
         loading: false,
+        input: true,
         title: 'Upload',
-        text: 'Please enter the absolute path to the file.',
+        content: 'Please enter the absolute path to the file.',
         data: '',
         placeholder: 'D:\\absolute\\path\\to\\the\\file',
         onModalOk: this.upload,
@@ -208,16 +211,28 @@ export default defineComponent({
       this.modal = {
         visible: true,
         loading: false,
+        input: true,
         title: 'New folder',
-        text: 'Please enter the folder name.',
+        content: 'Please enter the folder name.',
         data: '',
         placeholder: 'new_folder_name',
         onModalOk: this.mkdir,
       };
     },
     onDeleteClick() {
-      const selected: string[] = this.fileList.selected;
-      this.recursivelyRemove(selected);
+      this.modal = {
+        visible: true,
+        loading: false,
+        input: false,
+        title: 'Delete',
+        content:
+          'Are you sure you want to delete these files? ' +
+          'Folders will be recursively removed. ' +
+          'Press OK to continue.',
+        data: '',
+        placeholder: '',
+        onModalOk: this.recursivelyRemove,
+      };
     },
     openNotification(type: string, description: string) {
       notification[type]({
@@ -333,7 +348,7 @@ export default defineComponent({
           this.modal.loading = false;
         });
     },
-    rmdir(folderName: string, pendingList: string[] = []) {
+    rmdir(folderName: string) {
       const path = this.path + folderName;
       dirClient
         .rmdir({ path })
@@ -346,10 +361,10 @@ export default defineComponent({
           this.openNotification('error', `Failed to delete ${folderName}/`);
         })
         .finally(() => {
-          this.afterRemove(pendingList);
+          this.afterRemove();
         });
     },
-    remove(fileName: string, pendingList: string[] = []) {
+    remove(fileName: string) {
       const path = this.path + fileName;
       fileClient
         .remove({ path })
@@ -362,24 +377,29 @@ export default defineComponent({
           this.openNotification('error', `Failed to delete ${fileName}`);
         })
         .finally(() => {
-          this.afterRemove(pendingList);
+          this.afterRemove();
         });
     },
-    afterRemove(pendingList: string[]) {
-      if (pendingList.length) {
-        this.recursivelyRemove(pendingList);
+    afterRemove() {
+      if (this.fileList.selected.length) {
+        this.recursivelyRemove();
       } else {
-        this.fileList.selected = [];
         this.fetch();
       }
     },
-    recursivelyRemove(removeList: string[]) {
-      if (!removeList.length) return;
-      const entry = removeList[0];
+    recursivelyRemove() {
+      this.modal.visible = false;
+      this.modal.loading = false;
+      this.fileList.loading = true;
+      const entry = this.fileList.selected.pop();
+      if (!entry) {
+        this.fileList.loading = false;
+        return;
+      }
       if (this.isDirectory(entry)) {
-        this.rmdir(entry, removeList.slice(1));
+        this.rmdir(entry);
       } else {
-        this.remove(entry, removeList.slice(1));
+        this.remove(entry);
       }
     },
     parseError(err: AxiosError): { status: number; msg: string } {
