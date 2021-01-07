@@ -257,6 +257,7 @@ export default defineComponent({
       dirClient
         .cwd({ path: this.path })
         .then((_resp: RespType) => {
+          this.fileList.selected = [];
           this.fetch();
         })
         .catch((err: AxiosError) => {
