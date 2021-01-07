@@ -204,8 +204,15 @@ export default defineComponent({
       };
     },
     onFolderAddClick() {
-      // TODO: mkdir
-      return;
+      this.modal = {
+        visible: true,
+        loading: false,
+        title: 'New folder',
+        text: 'Please enter the folder name.',
+        data: '',
+        placeholder: 'new_folder_name',
+        onModalOk: this.mkdir,
+      };
     },
     onDeleteClick() {
       // TODO: delete, rmdir
@@ -216,6 +223,11 @@ export default defineComponent({
         message: type.toUpperCase(),
         description,
       });
+    },
+    isValid(folderName: string) {
+      // ~`!#$%^&*=[]\';,/{}|":<>? is not allowed in folder names
+      const re = /[~`!#$%^&*=[\]\\';,/{}|":<>?]/g;
+      return !re.test(folderName);
     },
     changeDirectory() {
       this.fileList.loading = true;
@@ -256,25 +268,25 @@ export default defineComponent({
           }
         })
         .catch((_err: AxiosError) => {
-          this.openNotification('error', 'File download failed');
+          this.openNotification('error', 'Failed to download');
           this.fetch();
         });
     },
     upload() {
-      if (!this.modal.data) {
+      const path = this.modal.data;
+      if (!path) {
         this.openNotification('warning', 'File path should not be blank');
         return;
       }
       this.modal.loading = true;
-      this.modal.text = 'Uploading... Please wait.';
       fileClient
-        .store({ path: this.modal.data })
+        .store({ path })
         .then((_resp: RespType) => {
-          this.openNotification('success', 'File upload success');
+          this.openNotification('success', 'File uploaded');
           this.fetch();
         })
         .catch((_err: AxiosError) => {
-          this.openNotification('error', 'File upload failed');
+          this.openNotification('error', 'Failed to upload');
         })
         .finally(() => {
           this.modal.visible = false;
@@ -282,7 +294,32 @@ export default defineComponent({
         });
     },
     mkdir() {
-      return;
+      const folderName = this.modal.data;
+      if (!folderName) {
+        this.openNotification('warning', 'Folder name should not be blank');
+        return;
+      }
+      if (!this.isValid(folderName)) {
+        this.openNotification(
+          'warning',
+          'Folder name should not contain special characters'
+        );
+        return;
+      }
+      this.modal.loading = true;
+      dirClient
+        .mkdir({ path: folderName })
+        .then((_resp: RespType) => {
+          this.openNotification('success', 'New folder created');
+          this.fetch();
+        })
+        .catch((_err: AxiosError) => {
+          this.openNotification('error', 'Failed to create folder');
+        })
+        .finally(() => {
+          this.modal.visible = false;
+          this.modal.loading = false;
+        });
     },
     remove() {
       return;
