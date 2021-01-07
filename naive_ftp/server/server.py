@@ -402,7 +402,7 @@ class ftp_server(Thread):
             if os.path.isdir(dst_path):
                 log('info', f'Created directory: {dst_path}')
                 if is_client:
-                    dir_path = dst_path.strip(self.server_dir)
+                    dir_path = dst_path[len(self.server_dir)+1:]
                     self.send_status(257, dir_path)
                 return True
             else:
