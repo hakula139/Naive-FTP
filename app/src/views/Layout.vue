@@ -3,7 +3,7 @@
     <a-layout-header id="layout-header">
       <a-space size="middle">
         <router-link
-          :to="{ name: 'Layout' }"
+          to="/files/"
           class="title"
         >
           {{ name }}
@@ -68,11 +68,23 @@
         </template>
       </a-breadcrumb>
       <file-list
-        v-model:selected="selectedRowKeys"
-        :data="fileList"
-        :loading="loading"
+        v-model:selected="fileList.selected"
+        :data="fileList.data"
+        :loading="fileList.loading"
         @retrieve="retrieve"
       />
+      <a-modal
+        v-model:visible="modal.visible"
+        :title="modal.title"
+        :confirm-loading="modal.loading"
+        @ok="modal.onModalOk"
+      >
+        <p>{{ modal.text }}</p>
+        <a-input
+          v-model:value="modal.data"
+          :placeholder="modal.placeholder"
+        />
+      </a-modal>
     </a-layout-content>
     <a-layout-footer id="layout-footer">
       {{ name }} created by
@@ -121,16 +133,26 @@ export default defineComponent({
         blog: 'https://hakula.xyz',
         repo: 'https://github.com/hakula139/Naive-FTP',
       },
-      local_dir: 'local_files',
-      selectedRowKeys: [] as string[],
-      fileList: [] as FileType[],
-      loading: false,
+      fileList: {
+        data: [] as FileType[],
+        selected: [] as string[],
+        loading: false,
+      },
+      modal: {
+        visible: false,
+        loading: false,
+        title: '',
+        text: '',
+        data: '',
+        placeholder: '',
+        onModalOk: Function(),
+      },
     };
   },
   computed: {
     title(): string {
       const separator = ' > ';
-      const route = this.route_parts.slice(1).join(separator);
+      const route = this.routeParts.slice(1).join(separator);
       return this.name + (route ? separator + route : '');
     },
     path(): string {
@@ -138,13 +160,13 @@ export default defineComponent({
       const path = this.$route.path.replace(re, '');
       return path;
     },
-    route_parts(): string[] {
+    routeParts(): string[] {
       const re = /^\/?|\/?$/g;
       const parts = this.$route.path.replaceAll(re, '').split('/');
       return parts;
     },
     breadcrumbs(): Route[] {
-      const parts = this.route_parts;
+      const parts = this.routeParts;
       const breadcrumbs: Route[] = [];
       parts.forEach((part, i) => {
         const parentPath = i ? breadcrumbs[i - 1].path : '/';
@@ -156,7 +178,7 @@ export default defineComponent({
       return breadcrumbs;
     },
     hasSelected(): boolean {
-      return this.selectedRowKeys.length > 0;
+      return this.fileList.selected.length > 0;
     },
   },
   watch: {
@@ -170,8 +192,15 @@ export default defineComponent({
   },
   methods: {
     onUploadClick() {
-      // TODO: store
-      return;
+      this.modal = {
+        visible: true,
+        loading: false,
+        title: 'Upload',
+        text: 'Please enter the absolute path to the file.',
+        data: '',
+        placeholder: 'D:\\absolute\\path\\to\\the\\file',
+        onModalOk: this.upload,
+      };
     },
     onFolderAddClick() {
       // TODO: mkdir
@@ -181,60 +210,79 @@ export default defineComponent({
       // TODO: delete, rmdir
       return;
     },
+    openNotification(type: string, description: string) {
+      notification[type]({
+        message: type.toUpperCase(),
+        description,
+      });
+    },
     changeDirectory() {
-      this.loading = true;
+      this.fileList.loading = true;
       dirClient
         .cwd({ path: this.path })
         .then((_resp: RespType) => {
           this.fetch();
         })
         .catch((err: AxiosError) => {
-          this.loading = false;
           this.$router.push({
             name: 'ErrorPage',
-            params: this.parse_error(err),
+            params: this.parseError(err),
           });
         });
     },
     fetch() {
-      this.loading = true;
+      this.fileList.loading = true;
       dirClient
         .list({ path: this.path })
         .then((resp: RespType) => {
-          this.loading = false;
-          if (resp.data) this.fileList = resp.data;
+          this.fileList.loading = false;
+          if (resp.data) this.fileList.data = resp.data;
           document.title = this.title;
         })
         .catch((err: AxiosError) => {
-          this.loading = false;
           this.$router.push({
             name: 'ErrorPage',
-            params: this.parse_error(err),
+            params: this.parseError(err),
           });
         });
     },
-    retrieve(event: string) {
+    retrieve(fileName: string) {
       fileClient
-        .retrieve({ path: this.path + event })
+        .retrieve({ path: this.path + fileName })
         .then((resp: RespType) => {
           if (resp.msg) {
             this.openNotification('success', `File downloaded to ${resp.msg}`);
           }
         })
-        .catch((err: AxiosError) => {
-          this.$router.push({
-            name: 'ErrorPage',
-            params: this.parse_error(err),
-          });
+        .catch((_err: AxiosError) => {
+          this.openNotification('error', 'File download failed');
+          this.fetch();
         });
     },
-    openNotification(type: string, description: string) {
-      notification[type]({
-        message: 'Success',
-        description,
-      });
+    upload() {
+      this.modal.loading = true;
+      this.modal.text = 'Uploading... Please wait.';
+      fileClient
+        .store({ path: this.modal.data })
+        .then((_resp: RespType) => {
+          this.openNotification('success', 'File upload success');
+          this.fetch();
+        })
+        .catch((_err: AxiosError) => {
+          this.openNotification('error', 'File upload failed');
+        })
+        .finally(() => {
+          this.modal.visible = false;
+          this.modal.loading = false;
+        });
     },
-    parse_error(err: AxiosError) {
+    mkdir() {
+      return;
+    },
+    remove() {
+      return;
+    },
+    parseError(err: AxiosError) {
       let status = 504;
       let msg = 'Gateway Timeout';
       if (err.response) {

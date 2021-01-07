@@ -8,7 +8,9 @@ import {
   Breadcrumb,
   Button,
   Empty,
+  Input,
   Layout,
+  Modal,
   Space,
   Table,
 } from 'ant-design-vue';
@@ -21,7 +23,9 @@ app
   .use(Breadcrumb)
   .use(Button)
   .use(Empty)
+  .use(Input)
   .use(Layout)
+  .use(Modal)
   .use(Space)
   .use(Table);
 
