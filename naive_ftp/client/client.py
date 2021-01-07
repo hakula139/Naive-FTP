@@ -475,21 +475,23 @@ class ftp_client():
         finally:
             self.close_data_conn()
 
-    def store(self, path: str) -> None:
+    def store(self, path: str) -> bool:
         '''
         Store a file to server.
+
+        Return True if succeeded.
 
         :param path: local path to the file
         '''
 
         if not self.ping():
             log('info', 'Please connect to server first.')
-            return
+            return False
 
         src_path = os.path.realpath(os.path.join(self.local_dir, path))
         if not os.path.isfile(src_path):
             log('info', 'File not found.')
-            return
+            return False
         log('info', f'Uploading file: {src_path}')
 
         self.ctrl_conn.sendall(f'STOR {path}\r\n'.encode('utf-8'))
@@ -497,11 +499,11 @@ class ftp_client():
         expected, _, resp_msg = self.check_resp(150)
         if not expected:
             log('info', resp_msg)
-            return
+            return False
         self.open_data_conn()
         if not self.check_resp(225)[0]:
             self.close_data_conn()
-            return
+            return False
 
         try:
             with open(src_path, 'rb') as src_file:
@@ -517,19 +519,22 @@ class ftp_client():
                 log('debug', 'Data connection closed.')
         else:
             log('info', 'File successfully uploaded.')
+            return True
         finally:
             self.close_data_conn()
 
-    def delete(self, path: str) -> None:
+    def delete(self, path: str) -> bool:
         '''
         Delete a file from server.
+
+        Return True if succeeded.
 
         :param path: server path to the file
         '''
 
         if not self.ping():
             log('info', 'Please connect to server first.')
-            return
+            return False
 
         log('info', f'Deleting file: {path}')
 
@@ -537,6 +542,7 @@ class ftp_client():
 
         expected, _, resp_msg = self.check_resp(250)
         log('info' if expected else 'warn', resp_msg)
+        return expected
 
     def cwd(self, path: str = '/') -> bool:
         '''
@@ -581,16 +587,18 @@ class ftp_client():
             print(resp_msg)
             return resp_msg
 
-    def mkdir(self, path: str) -> None:
+    def mkdir(self, path: str) -> bool:
         '''
         Make a directory recursively.
+
+        Return True if succeeded.
 
         :param path: server path to the directory
         '''
 
         if not self.ping():
             log('info', 'Please connect to server first.')
-            return
+            return False
 
         self.ctrl_conn.sendall(f'MKD {path}\r\n'.encode('utf-8'))
         expected, _, resp_msg = self.check_resp(257)
@@ -598,8 +606,9 @@ class ftp_client():
             log('warn', resp_msg)
         else:
             log('info', f'Created directory: {resp_msg}')
+        return expected
 
-    def rmdir(self, path: str, recursive: bool = False) -> None:
+    def rmdir(self, path: str, recursive: bool = False) -> bool:
         '''
         Remove a directory.
 
@@ -609,21 +618,24 @@ class ftp_client():
 
         if not self.ping():
             log('info', 'Please connect to server first.')
-            return
+            return False
 
         op = 'RMDA' if recursive else 'RMD'
         self.ctrl_conn.sendall(f'{op} {path}\r\n'.encode('utf-8'))
         expected, _, resp_msg = self.check_resp(250)
         log('info' if expected else 'warn', resp_msg)
+        return expected
 
-    def rmdir_all(self, path: str) -> None:
+    def rmdir_all(self, path: str) -> bool:
         '''
         Remove a directory recursively.
+
+        Return True if succeeded.
 
         :param path: server path to the directory
         '''
 
-        self.rmdir(path, recursive=True)
+        return self.rmdir(path, recursive=True)
 
     def router(self, raw_cmd: str) -> None:
         '''
