@@ -83,6 +83,7 @@
         <a-input
           v-model:value="modal.data"
           :placeholder="modal.placeholder"
+          allow-clear
         />
       </a-modal>
     </a-layout-content>
@@ -260,6 +261,10 @@ export default defineComponent({
         });
     },
     upload() {
+      if (!this.modal.data) {
+        this.openNotification('warning', 'File path should not be blank');
+        return;
+      }
       this.modal.loading = true;
       this.modal.text = 'Uploading... Please wait.';
       fileClient
