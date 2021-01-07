@@ -2,12 +2,12 @@ import axios, { AxiosError, AxiosResponse } from 'axios';
 import { API_URL } from '@/utils/config';
 import { ReqType, RespType } from '@/components/types';
 
-const fileApiUrl = API_URL + 'file';
+const dirApiUrl = API_URL + 'dir';
 
-const retrieve = (req: ReqType): Promise<RespType> =>
+const list = (req: ReqType): Promise<RespType> =>
   new Promise((resolve, reject) => {
     axios
-      .get(fileApiUrl, {
+      .get(dirApiUrl, {
         params: req,
       })
       .then((resp: AxiosResponse) => {
@@ -16,20 +16,30 @@ const retrieve = (req: ReqType): Promise<RespType> =>
       .catch((err: AxiosError) => reject(err));
   });
 
-const store = (req: ReqType): Promise<RespType> =>
+const cwd = (req: ReqType): Promise<RespType> =>
   new Promise((resolve, reject) => {
     axios
-      .put(fileApiUrl, req)
+      .post(dirApiUrl, req)
       .then((resp: AxiosResponse) => {
         resolve(resp.data);
       })
       .catch((err: AxiosError) => reject(err));
   });
 
-const remove = (req: ReqType): Promise<RespType> =>
+const mkdir = (req: ReqType): Promise<RespType> =>
   new Promise((resolve, reject) => {
     axios
-      .delete(fileApiUrl, {
+      .put(dirApiUrl, req)
+      .then((resp: AxiosResponse) => {
+        resolve(resp.data);
+      })
+      .catch((err: AxiosError) => reject(err));
+  });
+
+const rmdir = (req: ReqType): Promise<RespType> =>
+  new Promise((resolve, reject) => {
+    axios
+      .delete(dirApiUrl, {
         data: req,
       })
       .then((resp: AxiosResponse) => {
@@ -38,10 +48,11 @@ const remove = (req: ReqType): Promise<RespType> =>
       .catch((err: AxiosError) => reject(err));
   });
 
-const fileClient = {
-  retrieve,
-  store,
-  remove,
+const dirClient = {
+  list,
+  cwd,
+  mkdir,
+  rmdir,
 };
 
-export default fileClient;
+export default dirClient;

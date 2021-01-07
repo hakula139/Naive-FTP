@@ -1,1 +1,0 @@
-export { mockFileList } from './fileList';

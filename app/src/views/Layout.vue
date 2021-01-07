@@ -1,17 +1,29 @@
+<!--prettier-ignore-->
 <template>
   <a-layout id="layout">
     <a-layout-header id="layout-header">
       <a-space size="middle">
         <router-link
-          :to="{ name: 'Layout' }"
+          to="/files/"
           class="title"
         >
-          {{ title }}
+          {{ name }}
         </router-link>
         <a-button
           type="primary"
           shape="circle"
           size="large"
+          @click="onUploadClick"
+        >
+          <template #icon>
+            <UploadOutlined />
+          </template>
+        </a-button>
+        <a-button
+          type="primary"
+          shape="circle"
+          size="large"
+          @click="onFolderAddClick"
         >
           <template #icon>
             <FolderAddOutlined />
@@ -22,6 +34,7 @@
           type="danger"
           shape="circle"
           size="large"
+          @click="onDeleteClick"
         >
           <template #icon>
             <DeleteOutlined />
@@ -43,7 +56,7 @@
       </a-space>
     </a-layout-header>
     <a-layout-content id="layout-content">
-      <a-breadcrumb :routes="routes">
+      <a-breadcrumb :routes="breadcrumbs">
         <template #separator>
           <span class="path-separator">
             <RightOutlined />
@@ -56,12 +69,28 @@
         </template>
       </a-breadcrumb>
       <file-list
-        v-model:selected="selectedRowKeys"
-        :data="fileList"
+        v-model:selected="fileList.selected"
+        :data="fileList.data"
+        :loading="fileList.loading"
+        @retrieve="retrieve"
       />
+      <a-modal
+        v-model:visible="modal.visible"
+        :title="modal.title"
+        :confirm-loading="modal.loading"
+        @ok="modal.onModalOk"
+      >
+        <p>{{ modal.content }}</p>
+        <a-input
+          v-if="modal.input"
+          v-model:value="modal.data"
+          :placeholder="modal.placeholder"
+          allow-clear
+        />
+      </a-modal>
     </a-layout-content>
     <a-layout-footer id="layout-footer">
-      {{ title }} created by
+      {{ name }} created by
       <a
         :href="links.blog"
         target="_blank"
@@ -74,18 +103,21 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
+import { AxiosError } from 'axios';
 
+import { notification } from 'ant-design-vue';
 import { Route } from 'ant-design-vue/lib/breadcrumb/Breadcrumb';
 import {
   DeleteOutlined,
   FolderAddOutlined,
   GithubOutlined,
   RightOutlined,
+  UploadOutlined,
 } from '@ant-design/icons-vue';
 
 import { FileList } from '@/components';
-import { FileType } from '@/components/types';
-import { fileClient } from '@/apis/mocks';
+import { FileType, RespType } from '@/components/types';
+import { fileClient, dirClient } from '@/apis';
 
 export default defineComponent({
   components: {
@@ -93,24 +125,52 @@ export default defineComponent({
     FolderAddOutlined,
     GithubOutlined,
     RightOutlined,
+    UploadOutlined,
     FileList,
   },
   data() {
     return {
-      title: 'Naive-FTP',
+      name: 'Naive-FTP',
       author: 'Hakula',
       links: {
         blog: 'https://hakula.xyz',
         repo: 'https://github.com/hakula139/Naive-FTP',
       },
-      selectedRowKeys: [] as string[],
-      fileList: [] as FileType[],
+      fileList: {
+        data: [] as FileType[],
+        selected: [] as string[],
+        loading: false,
+      },
+      modal: {
+        visible: false,
+        loading: false,
+        input: true,
+        title: '',
+        content: '',
+        data: '',
+        placeholder: '',
+        onModalOk: Function(),
+      },
     };
   },
   computed: {
-    routes(): Route[] {
+    title(): string {
+      const separator = ' > ';
+      const route = this.routeParts.slice(1).join(separator);
+      return this.name + (route ? separator + route : '');
+    },
+    path(): string {
+      const re = /^\/?files/;
+      const path = this.$route.path.replace(re, '');
+      return path;
+    },
+    routeParts(): string[] {
       const re = /^\/?|\/?$/g;
-      const parts: string[] = this.$route.path.replaceAll(re, '').split('/');
+      const parts = this.$route.path.replaceAll(re, '').split('/');
+      return parts;
+    },
+    breadcrumbs(): Route[] {
+      const parts = this.routeParts;
       const breadcrumbs: Route[] = [];
       parts.forEach((part, i) => {
         const parentPath = i ? breadcrumbs[i - 1].path : '/';
@@ -122,24 +182,238 @@ export default defineComponent({
       return breadcrumbs;
     },
     hasSelected(): boolean {
-      return this.selectedRowKeys.length > 0;
+      return this.fileList.selected.length > 0;
+    },
+  },
+  watch: {
+    $route: function () {
+      const re = /^\/files\//;
+      if (this.$route.path.match(re)) this.changeDirectory();
     },
   },
   created() {
-    this.fetch();
+    this.changeDirectory();
   },
   methods: {
-    fetch(): void {
-      const re = /^\/?files\/?/;
-      const path: string = this.$route.path.replace(re, '');
-      fileClient
-        .getFileList({ path })
-        .then((resp) => {
-          this.fileList = resp.data;
+    onUploadClick() {
+      this.modal = {
+        visible: true,
+        loading: false,
+        input: true,
+        title: 'Upload',
+        content: 'Please enter the absolute path to the file.',
+        data: '',
+        placeholder: 'D:\\absolute\\path\\to\\the\\file',
+        onModalOk: this.upload,
+      };
+    },
+    onFolderAddClick() {
+      this.modal = {
+        visible: true,
+        loading: false,
+        input: true,
+        title: 'New folder',
+        content: 'Please enter the folder name.',
+        data: '',
+        placeholder: 'new_folder_name',
+        onModalOk: this.mkdir,
+      };
+    },
+    onDeleteClick() {
+      this.modal = {
+        visible: true,
+        loading: false,
+        input: false,
+        title: 'Delete',
+        content:
+          'Are you sure you want to delete these files? ' +
+          'Folders will be recursively removed. ' +
+          'Press OK to continue.',
+        data: '',
+        placeholder: '',
+        onModalOk: this.recursivelyRemove,
+      };
+    },
+    openNotification(type: string, description: string) {
+      notification[type]({
+        message: type.toUpperCase(),
+        description,
+      });
+    },
+    isValidName(folderName: string): boolean {
+      // ~`!#$%^&*=[]\';,/{}|":<>? is not allowed in folder names
+      const re = /[~`!#$%^&*=[\]\\';,/{}|":<>?]/g;
+      return !re.test(folderName);
+    },
+    isDirectory(fileName: string): boolean {
+      const fileList: FileType[] = this.fileList.data;
+      const matched: FileType[] = fileList.filter(
+        (entry) => entry.fileName === fileName
+      );
+      return matched[0] && matched[0].fileType === 'Dir';
+    },
+    changeDirectory() {
+      this.fileList.loading = true;
+      dirClient
+        .cwd({ path: this.path })
+        .then((_resp: RespType) => {
+          this.fetch();
         })
-        .catch(() => {
-          this.$router.push('NotFound');
+        .catch((err: AxiosError) => {
+          this.$router.push({
+            name: 'ErrorPage',
+            params: this.parseError(err),
+          });
         });
+    },
+    fetch() {
+      this.fileList.loading = true;
+      dirClient
+        .list({ path: this.path })
+        .then((resp: RespType) => {
+          if (resp.data) {
+            this.fileList.data = resp.data;
+          }
+          document.title = this.title;
+        })
+        .catch((_err: AxiosError) => {
+          this.openNotification('error', `Failed to fetch list data`);
+        })
+        .finally(() => {
+          this.fileList.loading = false;
+        });
+    },
+    retrieve(fileName: string) {
+      const path = this.path + fileName;
+      fileClient
+        .retrieve({ path })
+        .then((resp: RespType) => {
+          if (resp.msg) {
+            this.openNotification('success', `File downloaded to ${resp.msg}`);
+          }
+        })
+        .catch((_err: AxiosError) => {
+          this.openNotification('error', `Failed to download ${fileName}`);
+          this.fetch();
+        });
+    },
+    upload() {
+      const path = this.modal.data;
+      if (!path) {
+        this.openNotification('warning', 'File path should not be blank');
+        return;
+      }
+      this.modal.loading = true;
+      fileClient
+        .store({ path })
+        .then((resp: RespType) => {
+          if (resp.msg) {
+            this.openNotification('success', 'File uploaded');
+          }
+          this.fetch();
+        })
+        .catch((_err: AxiosError) => {
+          this.openNotification('error', 'Failed to upload');
+        })
+        .finally(() => {
+          this.modal.visible = false;
+          this.modal.loading = false;
+        });
+    },
+    mkdir() {
+      const folderName = this.modal.data;
+      if (!folderName) {
+        this.openNotification('warning', 'Folder name should not be blank');
+        return;
+      }
+      if (!this.isValidName(folderName)) {
+        this.openNotification(
+          'warning',
+          'Folder name should not contain special characters'
+        );
+        return;
+      }
+      this.modal.loading = true;
+      dirClient
+        .mkdir({ path: folderName })
+        .then((_resp: RespType) => {
+          this.openNotification('success', 'New folder created');
+          this.fetch();
+        })
+        .catch((_err: AxiosError) => {
+          this.openNotification('error', 'Failed to create folder');
+        })
+        .finally(() => {
+          this.modal.visible = false;
+          this.modal.loading = false;
+        });
+    },
+    rmdir(folderName: string) {
+      const path = this.path + folderName;
+      dirClient
+        .rmdir({ path })
+        .then((resp: RespType) => {
+          if (resp.msg) {
+            this.openNotification('success', `${folderName}/ deleted`);
+          }
+        })
+        .catch((_err: AxiosError) => {
+          this.openNotification('error', `Failed to delete ${folderName}/`);
+        })
+        .finally(() => {
+          this.afterRemove();
+        });
+    },
+    remove(fileName: string) {
+      const path = this.path + fileName;
+      fileClient
+        .remove({ path })
+        .then((resp: RespType) => {
+          if (resp.msg) {
+            this.openNotification('success', `${fileName} deleted`);
+          }
+        })
+        .catch((_err: AxiosError) => {
+          this.openNotification('error', `Failed to delete ${fileName}`);
+        })
+        .finally(() => {
+          this.afterRemove();
+        });
+    },
+    afterRemove() {
+      if (this.fileList.selected.length) {
+        this.recursivelyRemove();
+      } else {
+        this.fetch();
+      }
+    },
+    recursivelyRemove() {
+      this.modal.visible = false;
+      this.modal.loading = false;
+      this.fileList.loading = true;
+      const entry = this.fileList.selected.pop();
+      if (!entry) {
+        this.fileList.loading = false;
+        return;
+      }
+      if (this.isDirectory(entry)) {
+        this.rmdir(entry);
+      } else {
+        this.remove(entry);
+      }
+    },
+    parseError(err: AxiosError): { status: number; msg: string } {
+      let status = 504;
+      let msg = 'Gateway Timeout';
+      if (err.response) {
+        if (err.response.status) {
+          status = err.response.status;
+        }
+        if (err.response.statusText) {
+          msg = err.response.statusText;
+        }
+      }
+      return { status, msg };
     },
   },
 });

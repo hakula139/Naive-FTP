@@ -37,24 +37,37 @@ git clone https://github.com/hakula139/Naive-FTP.git
 cd Naive-FTP
 ```
 
-Make sure you have the latest versions of `setuptools` and `wheel` installed.
+It's recommended to set up a virtual environment, so that any changes will not affect your global settings.
 
 ```bash
-python -m pip install --user --upgrade setuptools wheel
+python -m venv venv
+./venv/Scripts/activate
 ```
 
 Then you can build the project using `setup.py`.
 
 ```bash
-python setup.py install --user
+python setup.py install
+```
+
+Make sure you have the latest versions of `setuptools` installed.
+
+```bash
+python -m pip install --upgrade setuptools
 ```
 
 #### 1.1 GUI support
 
-If you prefer to use a GUI for client, use the following command to set up the GUI.
+If you prefer to try our GUI for client, use the following command to set it up.
 
 ```bash
 cd app && yarn && yarn build
+```
+
+Besides, you need to launch the client handler to connect the client GUI with the server.
+
+```bash
+cd .. && flask run
 ```
 
 ### 2. Usage
@@ -91,17 +104,14 @@ To get started, use the command `help` to show all available commands.
 
 #### 2.3 client GUI
 
-Start the Naive-FTP client GUI using the command below.
-
-```bash
-yarn build
-```
+If you have walked through the guide before (especially [Chap. 1.1](#11-gui-support)), then you can simply check the website at <http://localhost:8181>, using any modern browser you like. :P
 
 ## TODOs
 
 - [ ] Implement a GUI using Flask and Vue.js
-  - [ ] Set up Vue.js
+  - [x] Set up Vue.js
   - [ ] Set up Flask
+- [ ] Compose a detailed document
 
 ## Contributors
 

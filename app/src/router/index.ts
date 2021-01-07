@@ -1,20 +1,33 @@
 import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router';
+import { BASE_URL } from '@/utils/config';
 
 const Layout = () =>
   import(/* webpackChunkName: "layout" */ '@/views/Layout.vue');
-const NotFound = () =>
-  import(/* webpackChunkName: "not-found" */ '@/views/NotFound.vue');
+const ErrorPage = () =>
+  import(/* webpackChunkName: "not-found" */ '@/views/ErrorPage.vue');
 
 const routes: Array<RouteRecordRaw> = [
   {
     path: '/files/:pathMatch(.*)*',
     name: 'Layout',
     component: Layout,
+    beforeEnter: (to, _from, next) => {
+      // Add a trailing slash if not exist
+      if (to.path.endsWith('/')) {
+        next();
+      } else {
+        next({
+          path: `${to.path}/`,
+          replace: true,
+        });
+      }
+    },
   },
   {
-    path: '/404',
-    name: 'NotFound',
-    component: NotFound,
+    path: '/error',
+    name: 'ErrorPage',
+    component: ErrorPage,
+    props: true,
   },
   {
     path: '/:pathMatch(.*)*',
@@ -23,7 +36,7 @@ const routes: Array<RouteRecordRaw> = [
 ];
 
 const router = createRouter({
-  history: createWebHistory(process.env.BASE_URL),
+  history: createWebHistory(BASE_URL),
   routes,
 });
 

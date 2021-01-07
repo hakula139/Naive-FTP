@@ -1,7 +1,9 @@
+<!--prettier-ignore-->
 <template>
   <a-table
     :columns="columns"
     :data-source="data"
+    :loading="loading"
     :pagination="false"
     :row-key="rowKey"
     :row-selection="{
@@ -11,16 +13,19 @@
   >
     <template #name="{ text, record }">
       <router-link
-        v-if="record.fileType === 'Dir'"
+        v-if="isDirectory(record)"
         :to="`${text}/`"
       >
         <b>
           {{ text }}
         </b>
       </router-link>
-      <span v-else>
+      <a
+        v-else
+        @click="onFileClick(text)"
+      >
         {{ text }}
-      </span>
+      </a>
     </template>
     <template #perms="{ text }">
       <code>
@@ -85,16 +90,21 @@ const columns = [
 
 export default defineComponent({
   props: {
-    data: {
-      type: Array as PropType<FileType[]>,
-      required: true,
-    },
     selected: {
       type: Array as PropType<string[]>,
       default: [],
     },
+    data: {
+      type: Array as PropType<FileType[]>,
+      required: true,
+    },
+    loading: {
+      type: Boolean,
+      required: true,
+    },
   },
   emits: {
+    retrieve: null,
     'update:selected': null,
   },
   data() {
@@ -104,8 +114,14 @@ export default defineComponent({
     };
   },
   methods: {
+    onFileClick(fileName: string) {
+      this.$emit('retrieve', fileName);
+    },
     onSelectChange(selectedRowKeys: string[]) {
       this.$emit('update:selected', selectedRowKeys);
+    },
+    isDirectory(file: FileType): boolean {
+      return file.fileType === 'Dir';
     },
   },
 });
