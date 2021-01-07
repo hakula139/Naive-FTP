@@ -107,7 +107,7 @@ def dir():
     if request.method == 'GET':
         path: str = request.args.get('path', default='', type=str)
         data: list[dict] = client.ls(path)
-        if not data:
+        if data == None:
             return '', '404 Not found'
         return {
             'data': data,

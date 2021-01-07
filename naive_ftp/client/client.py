@@ -250,6 +250,23 @@ class ftp_client():
         else:
             return True
 
+    def get_client_path(self, path: str) -> str:
+        '''
+        Parse the client path to its real path.
+
+        :param path: path extracted from user command
+        '''
+
+        if path.startswith('/'):
+            client_path = os.path.realpath(
+                os.path.join(self.local_dir, path[1:])
+            )
+        else:
+            client_path = os.path.realpath(
+                os.path.join(self.local_dir, path)
+            )
+        return client_path
+
     def ls(self, path: str = '.') -> list[dict]:
         '''
         List information of a file or directory.
@@ -441,7 +458,7 @@ class ftp_client():
             log('info', 'Please connect to server first.')
             return None
 
-        dst_path = os.path.realpath(os.path.join(self.local_dir, path))
+        dst_path = self.get_client_path(os.path.basename(path))
         log('info', f'Downloading file: {dst_path}')
 
         self.ctrl_conn.sendall(f'RETR {path}\r\n'.encode('utf-8'))
@@ -488,7 +505,7 @@ class ftp_client():
             log('info', 'Please connect to server first.')
             return False
 
-        src_path = os.path.realpath(os.path.join(self.local_dir, path))
+        src_path = self.get_client_path(path)
         if not os.path.isfile(src_path):
             log('info', 'File not found.')
             return False

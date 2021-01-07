@@ -5,7 +5,7 @@ with open('README.md', 'r', encoding='utf-8') as doc:
 
 setuptools.setup(
     name='naive_ftp',
-    version='0.2.0',
+    version='0.2.1',
     author='Hakula Chen',
     author_email='i@hakula.xyz',
     description='A simple FTP server and client.',
