@@ -1,3 +1,4 @@
+<!--prettier-ignore-->
 <template>
   <div id="main-container">
     <router-view />

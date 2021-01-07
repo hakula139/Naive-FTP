@@ -1,3 +1,4 @@
+<!--prettier-ignore-->
 <template>
   <a-empty :description="description" />
 </template>

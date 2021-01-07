@@ -66,6 +66,10 @@ class ftp_client():
                 log('debug', f'Connection closed: {e}, should be: {code}')
             self.close_ctrl_conn()
             return False, 0, None
+        except AttributeError:
+            if self.cli_mode:
+                log('debug', f'Connection failed, should be: {code}')
+            return False, 0, None
 
         try:
             resp_code, resp_msg = resp.split(None, 1)

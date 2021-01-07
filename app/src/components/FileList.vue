@@ -1,3 +1,4 @@
+<!--prettier-ignore-->
 <template>
   <a-table
     :columns="columns"
@@ -119,7 +120,7 @@ export default defineComponent({
     onSelectChange(selectedRowKeys: string[]) {
       this.$emit('update:selected', selectedRowKeys);
     },
-    isDirectory(file: FileType) {
+    isDirectory(file: FileType): boolean {
       return file.fileType === 'Dir';
     },
   },

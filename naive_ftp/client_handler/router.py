@@ -24,7 +24,7 @@ def file():
     DELE <server_path>
 
         req: DELETE /api/file
-        req_body: { data: { path: str } }
+        req_body: { path: str }
         resp: { msg: str }
     '''
 
@@ -59,10 +59,7 @@ def file():
     # DELE
     if request.method == 'DELETE':
         data: dict = request.get_json()
-        payload: dict = data.get('data')
-        if not payload:
-            return '', '400 Bad Request'
-        path: str = payload.get('path')
+        path: dict = data.get('path')
         if not path:
             return '', '400 Bad Request'
         status: bool = client.delete(path)
@@ -96,7 +93,7 @@ def dir():
     RMDA <server_path>
 
         req: DELETE /api/dir
-        req_body: { data: { path: str } }
+        req_body: { path: str }
         resp: { msg: str }
     '''
 
@@ -142,10 +139,7 @@ def dir():
     # RMDA
     if request.method == 'DELETE':
         data: dict = request.get_json()
-        payload = data.get('data')
-        if not payload:
-            return '', '400 Bad Request'
-        path = payload.get('path')
+        path = data.get('path')
         if not path:
             return '', '400 Bad Request'
         status = client.rmdir_all(path)

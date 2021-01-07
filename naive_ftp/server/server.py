@@ -310,7 +310,7 @@ class ftp_server(Thread):
                 if not self.data_sock:
                     self.open_data_sock()
                 self.open_data_conn()
-                while True:
+                while self.data_conn:
                     data = self.data_conn.recv(self.buffer_size)
                     if not data:
                         break
@@ -434,7 +434,8 @@ class ftp_server(Thread):
                 log('info', f'Removed directory: {src_path}')
                 self.send_status(250)
             else:
-                raise OSError
+                os.remove(src_path)
+                log('info', f'Deleted file: {src_path}')
         except OSError:
             log('warn', f'Failed to remove directory: {src_path}')
             self.send_status(550)
@@ -523,7 +524,7 @@ class server_listener(Thread):
         super().__init__()
 
         # Properties
-        self.ctrl_timeout_duration: float = 60.0
+        self.ctrl_timeout_duration: float = 30.0
         self.max_allowed_conn: int = 5
 
         # Control connection

@@ -1,3 +1,4 @@
+<!--prettier-ignore-->
 <template>
   <a-layout id="layout">
     <a-layout-header id="layout-header">
@@ -215,8 +216,8 @@ export default defineComponent({
       };
     },
     onDeleteClick() {
-      // TODO: delete, rmdir
-      return;
+      const selected: string[] = this.fileList.selected;
+      this.recursivelyRemove(selected);
     },
     openNotification(type: string, description: string) {
       notification[type]({
@@ -224,10 +225,17 @@ export default defineComponent({
         description,
       });
     },
-    isValid(folderName: string) {
+    isValidName(folderName: string): boolean {
       // ~`!#$%^&*=[]\';,/{}|":<>? is not allowed in folder names
       const re = /[~`!#$%^&*=[\]\\';,/{}|":<>?]/g;
       return !re.test(folderName);
+    },
+    isDirectory(fileName: string): boolean {
+      const fileList: FileType[] = this.fileList.data;
+      const matched: FileType[] = fileList.filter(
+        (entry) => entry.fileName === fileName
+      );
+      return matched[0] && matched[0].fileType === 'Dir';
     },
     changeDirectory() {
       this.fileList.loading = true;
@@ -248,27 +256,29 @@ export default defineComponent({
       dirClient
         .list({ path: this.path })
         .then((resp: RespType) => {
-          this.fileList.loading = false;
-          if (resp.data) this.fileList.data = resp.data;
+          if (resp.data) {
+            this.fileList.data = resp.data;
+          }
           document.title = this.title;
         })
-        .catch((err: AxiosError) => {
-          this.$router.push({
-            name: 'ErrorPage',
-            params: this.parseError(err),
-          });
+        .catch((_err: AxiosError) => {
+          this.openNotification('error', `Failed to fetch list data`);
+        })
+        .finally(() => {
+          this.fileList.loading = false;
         });
     },
     retrieve(fileName: string) {
+      const path = this.path + fileName;
       fileClient
-        .retrieve({ path: this.path + fileName })
+        .retrieve({ path })
         .then((resp: RespType) => {
           if (resp.msg) {
             this.openNotification('success', `File downloaded to ${resp.msg}`);
           }
         })
         .catch((_err: AxiosError) => {
-          this.openNotification('error', 'Failed to download');
+          this.openNotification('error', `Failed to download ${fileName}`);
           this.fetch();
         });
     },
@@ -281,8 +291,10 @@ export default defineComponent({
       this.modal.loading = true;
       fileClient
         .store({ path })
-        .then((_resp: RespType) => {
-          this.openNotification('success', 'File uploaded');
+        .then((resp: RespType) => {
+          if (resp.msg) {
+            this.openNotification('success', 'File uploaded');
+          }
           this.fetch();
         })
         .catch((_err: AxiosError) => {
@@ -299,7 +311,7 @@ export default defineComponent({
         this.openNotification('warning', 'Folder name should not be blank');
         return;
       }
-      if (!this.isValid(folderName)) {
+      if (!this.isValidName(folderName)) {
         this.openNotification(
           'warning',
           'Folder name should not contain special characters'
@@ -321,10 +333,56 @@ export default defineComponent({
           this.modal.loading = false;
         });
     },
-    remove() {
-      return;
+    rmdir(folderName: string, pendingList: string[] = []) {
+      const path = this.path + folderName;
+      dirClient
+        .rmdir({ path })
+        .then((resp: RespType) => {
+          if (resp.msg) {
+            this.openNotification('success', `${folderName}/ deleted`);
+          }
+        })
+        .catch((_err: AxiosError) => {
+          this.openNotification('error', `Failed to delete ${folderName}/`);
+        })
+        .finally(() => {
+          this.afterRemove(pendingList);
+        });
     },
-    parseError(err: AxiosError) {
+    remove(fileName: string, pendingList: string[] = []) {
+      const path = this.path + fileName;
+      fileClient
+        .remove({ path })
+        .then((resp: RespType) => {
+          if (resp.msg) {
+            this.openNotification('success', `${fileName} deleted`);
+          }
+        })
+        .catch((_err: AxiosError) => {
+          this.openNotification('error', `Failed to delete ${fileName}`);
+        })
+        .finally(() => {
+          this.afterRemove(pendingList);
+        });
+    },
+    afterRemove(pendingList: string[]) {
+      if (pendingList.length) {
+        this.recursivelyRemove(pendingList);
+      } else {
+        this.fileList.selected = [];
+        this.fetch();
+      }
+    },
+    recursivelyRemove(removeList: string[]) {
+      if (!removeList.length) return;
+      const entry = removeList[0];
+      if (this.isDirectory(entry)) {
+        this.rmdir(entry, removeList.slice(1));
+      } else {
+        this.remove(entry, removeList.slice(1));
+      }
+    },
+    parseError(err: AxiosError): { status: number; msg: string } {
       let status = 504;
       let msg = 'Gateway Timeout';
       if (err.response) {
