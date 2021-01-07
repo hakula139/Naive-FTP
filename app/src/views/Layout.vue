@@ -12,6 +12,16 @@
           type="primary"
           shape="circle"
           size="large"
+          @click="onUploadClick"
+        >
+          <template #icon>
+            <UploadOutlined />
+          </template>
+        </a-button>
+        <a-button
+          type="primary"
+          shape="circle"
+          size="large"
           @click="onFolderAddClick"
         >
           <template #icon>
@@ -23,6 +33,7 @@
           type="danger"
           shape="circle"
           size="large"
+          @click="onDeleteClick"
         >
           <template #icon>
             <DeleteOutlined />
@@ -86,6 +97,7 @@ import {
   FolderAddOutlined,
   GithubOutlined,
   RightOutlined,
+  UploadOutlined,
 } from '@ant-design/icons-vue';
 
 import { FileList } from '@/components';
@@ -98,6 +110,7 @@ export default defineComponent({
     FolderAddOutlined,
     GithubOutlined,
     RightOutlined,
+    UploadOutlined,
     FileList,
   },
   data() {
@@ -156,7 +169,16 @@ export default defineComponent({
     this.changeDirectory();
   },
   methods: {
+    onUploadClick() {
+      // TODO: store
+      return;
+    },
     onFolderAddClick() {
+      // TODO: mkdir
+      return;
+    },
+    onDeleteClick() {
+      // TODO: delete, rmdir
       return;
     },
     changeDirectory() {

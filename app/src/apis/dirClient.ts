@@ -36,10 +36,23 @@ const mkdir = (req: ReqType): Promise<RespType> =>
       .catch((err: AxiosError) => reject(err));
   });
 
+const rmdir = (req: ReqType): Promise<RespType> =>
+  new Promise((resolve, reject) => {
+    axios
+      .delete(dirApiUrl, {
+        data: req,
+      })
+      .then((resp: AxiosResponse) => {
+        resolve(resp.data);
+      })
+      .catch((err: AxiosError) => reject(err));
+  });
+
 const dirClient = {
   list,
   cwd,
   mkdir,
+  rmdir,
 };
 
 export default dirClient;

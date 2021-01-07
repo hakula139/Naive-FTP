@@ -16,8 +16,32 @@ const retrieve = (req: ReqType): Promise<RespType> =>
       .catch((err: AxiosError) => reject(err));
   });
 
+const store = (req: ReqType): Promise<RespType> =>
+  new Promise((resolve, reject) => {
+    axios
+      .put(fileApiUrl, req)
+      .then((resp: AxiosResponse) => {
+        resolve(resp.data);
+      })
+      .catch((err: AxiosError) => reject(err));
+  });
+
+const remove = (req: ReqType): Promise<RespType> =>
+  new Promise((resolve, reject) => {
+    axios
+      .delete(fileApiUrl, {
+        data: req,
+      })
+      .then((resp: AxiosResponse) => {
+        resolve(resp.data);
+      })
+      .catch((err: AxiosError) => reject(err));
+  });
+
 const fileClient = {
   retrieve,
+  store,
+  remove,
 };
 
 export default fileClient;
