@@ -168,15 +168,11 @@ class ftp_server(Thread):
         '''
 
         if path.startswith('/'):
-            server_path = os.path.realpath(
-                os.path.join(self.server_dir, path[1:])
-            )
+            server_path = os.path.join(self.server_dir, path[1:])
         else:
-            server_path = os.path.realpath(
-                os.path.join(self.server_dir, self.cwd_path, path)
-            )
-        return server_path
-
+            cwd_path = '' if self.cwd_path == '/' else self.cwd_path
+            server_path = os.path.join(self.server_dir, cwd_path, path)
+        return os.path.realpath(server_path)
 
     def ls(self, path: str = '.') -> None:
         '''
