@@ -215,15 +215,61 @@ Here we call the API server a *client handler*, which helps the client to commun
 
 Next, the client handler processes the HTTP request from Axios, and sends FTP requests to the server. The server understands the request and does some operations (here it creates a directory), and consequently returns a FTP response based on the status of this operation.
 
-![Client handler](./assets/screenshot_client_handler.png)
+```text
+Serving on http://Hakula-DELL:5000
+[INFO ] open_ctrl_conn: Connected to server.
+[INFO ] cwd: Changed directory to: /
+[INFO ] mkdir: Created directory: Hakula
+```
 
-We can see more details in development mode.
+We can see more details in development mode (using the command `flask run`).
 
-![Client handler development mode](./assets/screenshot_client_handler_dev.png)
+```text
+ * Serving Flask app "./naive_ftp/client_handler/client_handler.py" (lazy loading)
+ * Environment: development
+ * Debug mode: on
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 164-557-715
+ * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
+127.0.0.1 - - [08/Jan/2021 03:11:27] "OPTIONS /api/dir HTTP/1.1" 200 -
+[INFO ] open_ctrl_conn: Connected to server.
+[INFO ] cwd: Changed directory to: /
+127.0.0.1 - - [08/Jan/2021 03:11:27] "POST /api/dir HTTP/1.1" 200 -
+127.0.0.1 - - [08/Jan/2021 03:11:28] "GET /api/dir?path=%2F HTTP/1.1" 200 -
+127.0.0.1 - - [08/Jan/2021 03:11:35] "OPTIONS /api/dir HTTP/1.1" 200 -
+[INFO ] mkdir: Created directory: Hakula
+127.0.0.1 - - [08/Jan/2021 03:11:35] "PUT /api/dir HTTP/1.1" 200 -
+127.0.0.1 - - [08/Jan/2021 03:11:35] "GET /api/dir?path=%2F HTTP/1.1" 200 -
+```
 
 Besides, you may check the logs on server side to see how the server reacts to the FTP requests.
 
-![Server](./assets/screenshot_server.png)
+```text
+Welcome to Naive-FTP server! Press q to exit.
+[INFO ] open_ctrl_sock: Server started, listening at ('192.168.56.1', 2121)
+[INFO ] open_ctrl_conn: Accept connection: ('192.168.56.1', 53225)
+[DEBUG] router: Operation: PING
+[DEBUG] router: Operation: CWD /
+[DEBUG] cwd: Changing working directory to E:\Github\Naive-FTP\server_files
+[INFO ] cwd: Changed working directory to /
+[DEBUG] router: Operation: PING
+[DEBUG] router: Operation: PING
+[DEBUG] router: Operation: LIST /
+[DEBUG] ls: Listing information of E:\Github\Naive-FTP\server_files
+[INFO ] open_data_sock: Data server started, listening at ('192.168.56.1', 53227)
+[INFO ] open_data_conn: Data connection opened: ('192.168.56.1', 53228)
+[INFO ] ls: Finished listing information of E:\Github\Naive-FTP\server_files
+[DEBUG] router: Operation: PING
+[DEBUG] router: Operation: PING
+[DEBUG] router: Operation: MKD Hakula
+[DEBUG] mkdir: Creating directory: E:\Github\Naive-FTP\server_files\Hakula
+[INFO ] mkdir: Created directory: E:\Github\Naive-FTP\server_files\Hakula
+[DEBUG] router: Operation: PING
+[DEBUG] router: Operation: PING
+[DEBUG] router: Operation: LIST /
+[DEBUG] ls: Listing information of E:\Github\Naive-FTP\server_files
+```
 
 ### 4. Client handler -> Axios -> Client GUI
 
@@ -246,7 +292,7 @@ You may try [Postman](https://www.postman.com) to inspect how the API works.
   - [ ] Batch download
   - [ ] Upload a folder
   - [ ] Batch upload
-  - [ ] Upload through selecting a file instead of manually inputing a path
+  - [ ] Upload through selecting a file instead of manually inputting a path
 
 ## Contributors
 
