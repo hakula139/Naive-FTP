@@ -372,7 +372,7 @@ class ftp_server(Thread):
         if os.path.isdir(dst_path):
             self.cwd_path = dst_path[len(self.server_dir)+1:]
             if not self.cwd_path:
-                self.cwd_path = '.'
+                self.cwd_path = '/'
             log('info', f'Changed working directory to {self.cwd_path}')
             self.send_status(257, self.cwd_path)
         else:
