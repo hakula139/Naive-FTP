@@ -1,0 +1,8 @@
+{
+  "python.analysis.extraPaths": [
+    "naive_ftp"
+  ],
+  "python.languageServer": "Pylance",
+  "python.linting.enabled": true,
+  "python.pythonPath": "venv\\Scripts\\python"
+}

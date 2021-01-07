@@ -199,10 +199,6 @@ web_modules/
 # Yarn Integrity file
 .yarn-integrity
 
-# dotenv environment variables file
-.env
-.env.test
-
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache
@@ -249,6 +245,5 @@ dist
 
 # Customized
 
-.vscode
-local_files
-server_files
+local_files/
+server_files/

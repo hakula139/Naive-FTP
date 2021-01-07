@@ -1,5 +1,6 @@
 import inspect
 import os
+from datetime import date, datetime
 
 
 def caller() -> str:
@@ -20,7 +21,33 @@ def log(level: str, msg: str) -> None:
     :param msg: message body
     '''
 
-    print(f'[{level.upper():5}] {caller()}: {msg}')
+    log_msg = f'[{level.upper():5}] {caller()}: {msg}'
+    print(log_msg)
+
+
+def logf(level: str, msg: str) -> None:
+    '''
+    An alias for the logger, which writes to a file.
+
+    Log format: time - [LEVEL] caller: msg
+
+    :param level: log level, can be 'debug' / 'info' / 'warn' / 'error' / 'fatal'
+    :param msg: message body
+    '''
+
+    current_date = date.today().strftime('%Y-%m-%d')
+    current_time = datetime.now().strftime('%H:%M:%S')
+
+    log_dir = os.path.realpath('logs')
+    log_name = f'{current_date}.log'
+    log_path = os.path.join(log_dir, log_name)
+    log_msg = f'{current_time} - [{level.upper():5}] {caller()}: {msg}\n'
+
+    try:
+        with open(log_path, 'a') as log_file:
+            log_file.write(log_msg)
+    except OSError as e:
+        log('error', f'Failed to write to a log file, error: {e}')
 
 
 def is_safe_path(path: str, base_dir: str, allow_base: bool = False) -> bool:

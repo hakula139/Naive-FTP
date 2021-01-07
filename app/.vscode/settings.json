@@ -1,0 +1,12 @@
+{
+  "eslint.validate": [
+    "typescript",
+    "javascript",
+    "vue"
+  ],
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true
+  },
+  "eslint.format.enable": true,
+  "eslint.packageManager": "yarn"
+}
