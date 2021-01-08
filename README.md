@@ -80,7 +80,10 @@ A GUI is optional for Naive-FTP, so if you prefer to use a CLI, you can safely s
 Here we use yarn to build the client GUI. It may take some time, so perhaps there's time for you to make yourself a cup of coffee... if you like.
 
 ```bash
-cd app && yarn && yarn build && cd ..
+cd app
+yarn
+yarn build
+cd ..
 ```
 
 Besides, the following dependencies are required for the client handler, which provides REST APIs for the client GUI to communicate with the server. Install these packages using [pip](https://pypi.org/project/pip).
