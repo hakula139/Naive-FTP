@@ -167,6 +167,7 @@ Serving on http://Hakula-DELL:5000
 Finally, start the local server and check the web page at <http://localhost:8181>.
 
 ```bash
+cd app
 node server.mjs
 ```
 
