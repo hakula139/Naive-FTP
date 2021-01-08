@@ -174,6 +174,7 @@ node server.mjs
 The server files and local files are located in `./server_files` and `./local_files` by default. You may need to manually create them if not exist.
 
 ```bash
+cd ..
 mkdir server_files
 mkdir local_files
 ```
