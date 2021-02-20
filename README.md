@@ -193,7 +193,7 @@ By far, we support these features in our GUI:
   - *FTP command*: `RETR /file_path`
 - Create a new folder
   - Recursively
-  - *FTP command*: `MKDIR /dir_path`
+  - *FTP command*: `MKD /dir_path`
 - Mass delete files and directories
   - Directories will be removed recursively
   - *FTP commands*: `DELE /path` (for files), `RMDA /dir_path` (for directories)
