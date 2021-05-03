@@ -35,7 +35,7 @@
     "@types/lodash" "^4.14.165"
     lodash "^4.17.15"
 
-"@ant-design/icons-vue@^6.0.0":
+"@ant-design/icons-vue@^6.0.1":
   version "6.0.1"
   resolved "https://registry.yarnpkg.com/@ant-design/icons-vue/-/icons-vue-6.0.1.tgz#9d804c3c74d2cfaf97cb18e582d3b9400934f5fd"
   integrity sha512-HigIgEVV6bbcrz2A92/qDzi/aKWB5EC6b6E1mxMB6aQA7ksiKY+gi4U94TpqyEIIhR23uaDrjufJ+xCZQ+vx6Q==
