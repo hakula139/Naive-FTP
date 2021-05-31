@@ -92,7 +92,7 @@ export default defineComponent({
   props: {
     selected: {
       type: Array as PropType<string[]>,
-      default: [],
+      default: () => [],
     },
     data: {
       type: Array as PropType<FileType[]>,

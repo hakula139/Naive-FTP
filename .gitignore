@@ -247,3 +247,4 @@ dist
 
 local_files/
 server_files/
+app/yarn.lock
